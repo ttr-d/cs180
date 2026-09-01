@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>COMPSCI 180 · Programming Project #1</title>
+<style>
+:root{
+  --bg:#050607;
+  --glass:rgba(7,10,12,.58);
+  --glass-strong:rgba(7,10,12,.76);
+  --line:rgba(255,255,255,.17);
+  --line-soft:rgba(255,255,255,.08);
+  --text:#f4f6f7;
+  --muted:#9aa4aa;
+  --accent:#59d8f2;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-snap-type:y mandatory;background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Arial Narrow","Helvetica Neue",Arial,sans-serif;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+
+.bg{
+  position:fixed;inset:0;z-index:-3;
+  background:url('assets/bg-reference.jpg') center/cover no-repeat;
+  filter:brightness(.26) saturate(.75) blur(4px);
+  transform:scale(1.02);
+}
+.bg::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.8),rgba(0,0,0,.52) 45%,rgba(0,0,0,.7));}
+.grid{position:fixed;inset:0;z-index:-2;pointer-events:none;opacity:.18;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:58px 58px}
+
+.topbar{
+  position:fixed;left:0;right:0;top:0;height:112px;z-index:50;
+  display:grid;grid-template-columns:260px 1fr 118px;
+  align-items:stretch;
+  background:rgba(0,0,0,.38);
+  backdrop-filter:blur(14px) saturate(120%);
+  -webkit-backdrop-filter:blur(14px) saturate(120%);
+  border-bottom:1px solid var(--line);
+}
+.logo{display:flex;align-items:center;padding:0 36px;border-right:1px solid var(--line-soft);font-weight:900;letter-spacing:.12em;font-size:1.1rem}
+.logo-mark{width:30px;height:30px;border:2px solid #fff;transform:rotate(45deg);margin-right:14px;position:relative}.logo-mark:after{content:"";position:absolute;width:8px;height:8px;background:var(--accent);right:-5px;top:-5px}
+.nav{display:flex;align-items:stretch;justify-content:center}
+.nav a{min-width:135px;padding:30px 20px 20px;border-left:1px solid var(--line-soft);display:flex;flex-direction:column;justify-content:center;gap:5px;text-transform:uppercase;font-weight:800;letter-spacing:-.02em;font-size:1rem}
+.nav a:last-child{border-right:1px solid var(--line-soft)}
+.nav a small{font:700 .62rem ui-monospace,SFMono-Regular,Menlo,monospace;color:#9ba4aa;letter-spacing:.12em}
+.nav a.active{color:var(--accent)}
+.tools{display:flex;align-items:center;justify-content:center;border-left:1px solid var(--line-soft);font:700 .7rem ui-monospace,SFMono-Regular,Menlo,monospace;color:#9da8ae;letter-spacing:.12em}
+
+.viewport{position:relative}
+.panel{
+  min-height:100vh;
+  height:100vh;
+  padding-top:112px;
+  scroll-snap-align:start;scroll-snap-stop:always;
+  scroll-margin-top:0;
+  display:grid;grid-template-columns:1fr 118px;
+  position:relative;
+  border-bottom:1px solid var(--line);
+  overflow:hidden;
+}
+.main{position:relative;min-width:0;overflow:hidden}
+.left{
+  position:absolute;left:0;top:0;bottom:72px;width:min(430px,34vw);z-index:8;
+  padding:44px 28px 40px 72px;
+  display:flex;flex-direction:column;justify-content:flex-start;
+  background:linear-gradient(90deg,rgba(3,5,6,.92) 0%,rgba(3,5,6,.72) 72%,rgba(3,5,6,0) 100%);
+  pointer-events:none;
+}
+.kicker{font:800 .66rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;color:var(--accent);text-transform:uppercase;margin-bottom:10px}
+h1{margin:0;text-transform:uppercase;font-size:clamp(3.2rem,5.6vw,6.6rem);line-height:.86;letter-spacing:-.07em}
+h1 span{color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.44)}
+.shot-meta{margin-top:26px;width:min(330px,90%);font:700 .72rem/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:#d5dde1}.shot-meta .row{display:grid;grid-template-columns:110px 1fr;border-top:1px solid var(--line-soft);padding:9px 0}.shot-meta .row:first-child{border-top:1px solid var(--line)}.shot-meta .label{color:#7f8b92}.shot-meta .value{color:#edf3f5}.shot-meta .value b{color:var(--accent)}
+
+.stage{position:absolute;inset:0 0 72px 0;min-width:0;padding:26px 34px 26px 300px}
+.media-box{position:relative;height:100%;background:rgba(6,9,11,.14);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+.media-box::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.035),transparent 28%,transparent 70%,rgba(89,216,242,.035));pointer-events:none}
+.media-title{position:absolute;left:18px;top:16px;z-index:12;font:800 .68rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:#cfd6da}
+.media-count{position:absolute;right:18px;top:16px;z-index:12;font:800 .68rem ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);letter-spacing:.14em}
+
+.part1-view{position:absolute;inset:52px 20px 112px 20px;display:flex;align-items:center;justify-content:center}
+.portrait-frame{position:relative;height:min(76vh,690px);aspect-ratio:2/3;border:1px solid var(--line);background:#0b0f12;box-shadow:0 28px 60px rgba(0,0,0,.34);overflow:hidden}
+.slide{position:absolute;inset:0;opacity:0;transition:opacity .35s ease,transform .35s ease;transform:scale(1.012)}
+.slide.active{opacity:1;transform:scale(1)}
+.slide img,.compare-card img,.gif-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+.placeholder{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;background:linear-gradient(145deg,#11171b,#07090b);font:800 .7rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:#e7ecee}
+.placeholder span{display:block;margin-top:8px;color:#7e8a91;font-weight:600;letter-spacing:.04em;line-height:1.5}
+.slide-label{position:absolute;left:12px;bottom:12px;padding:8px 10px;background:rgba(0,0,0,.62);border:1px solid var(--line);font:800 .62rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.13em;text-transform:uppercase}.slide-label b{color:var(--accent)}
+.tabs{position:absolute;left:20px;right:20px;bottom:20px;height:76px;display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.tab{border:1px solid var(--line);background:rgba(255,255,255,.025);color:#8f999f;padding:10px 12px;text-align:left;cursor:pointer;transition:.22s}.tab.active,.tab:hover{background:rgba(89,216,242,.11);border-color:rgba(89,216,242,.45);color:#eef7f9}.tab b{display:block;color:var(--accent);font:800 .62rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;margin-bottom:6px}.tab span{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}
+
+.compare-wrap{position:absolute;inset:60px 22px 76px;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:center}
+.compare-card{position:relative;aspect-ratio:3/2;border:1px solid var(--line);background:#0a0d10;overflow:hidden;box-shadow:0 24px 52px rgba(0,0,0,.28)}
+.compare-caption{position:absolute;left:12px;bottom:12px;padding:8px 10px;background:rgba(0,0,0,.63);border:1px solid var(--line);font:800 .62rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase}.compare-caption b{color:var(--accent)}
+
+.gif-wrap{position:absolute;inset:64px 60px 70px;border:1px solid var(--line);background:#0b0f11;overflow:hidden}
+
+.side{
+  position:relative;border-left:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.22);
+}
+.side-inner{display:flex;flex-direction:column;align-items:center;gap:22px}
+.side-num{font-size:4.8rem;line-height:.72;font-weight:900;color:var(--accent);letter-spacing:-.08em}
+.side-sub{font:800 .63rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;color:#d6dde0;text-transform:uppercase;writing-mode:vertical-rl;transform:rotate(180deg)}
+.side-dots{display:flex;flex-direction:column;gap:10px;margin-top:10px}.side-dots a{width:26px;height:26px;border:1px solid var(--line);display:grid;place-items:center;font:700 .66rem Georgia,serif;color:#7d888f}.side-dots a.active{background:var(--accent);color:#051014;border-color:var(--accent)}
+
+.bottom-shadow{position:absolute;left:0;right:118px;bottom:0;height:72px;border-top:1px solid var(--line);background:linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.72));box-shadow:0 -18px 44px rgba(0,0,0,.25) inset;z-index:10}
+.bottom-shadow .scroll{position:absolute;left:50%;bottom:17px;transform:translateX(-50%);font:700 .62rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;color:#707b81;text-transform:uppercase}.bottom-shadow .scroll:after{content:"";display:block;width:20px;height:20px;border-right:2px solid #647078;border-bottom:2px solid #647078;transform:rotate(45deg);margin:2px auto 0}
+
+
+.home-main{position:relative;min-width:0;display:grid;grid-template-columns:minmax(390px,520px) 1fr}
+.home-copy{padding:62px 34px 110px 72px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--line-soft);background:linear-gradient(90deg,rgba(4,5,6,.64),rgba(4,5,6,.18))}
+.home-copy .eyebrow{font:800 .68rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+.home-title{font-size:clamp(4rem,7vw,8.6rem);line-height:.79;letter-spacing:-.08em;margin:0;text-transform:uppercase}
+.home-title span{display:block;color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.44)}
+.home-sub{margin-top:24px;max-width:390px;color:#b2bcc1;font-size:1rem;line-height:1.55}
+.home-enter{margin-top:26px;display:inline-flex;align-items:center;gap:12px;width:max-content;padding:12px 15px;border:1px solid var(--line);background:rgba(0,0,0,.2);font:800 .66rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase}
+.home-enter::after{content:"";width:30px;border-top:1px solid var(--accent)}
+.home-visual{position:relative;overflow:hidden}
+.home-visual::before{content:"";position:absolute;inset:36px 42px 90px;background:rgba(6,9,11,.18);border:1px solid var(--line-soft);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.home-visual::after{content:"PERSPECTIVE";position:absolute;right:42px;bottom:86px;font-size:clamp(4rem,11vw,11rem);font-weight:900;line-height:.72;letter-spacing:-.08em;color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.08)}
+.home-index{position:absolute;left:66px;bottom:116px;z-index:2;font:800 .65rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:#d6dde0}
+.home-index b{color:var(--accent);margin-right:12px}
+@media(max-width:1050px){
+  .topbar{grid-template-columns:220px 1fr 90px}.nav a{min-width:100px;font-size:.86rem;padding:26px 12px 18px}.main{grid-template-columns:340px 1fr}.left{padding-left:38px}.stage{padding-left:24px;padding-right:24px}.side{width:96px}.panel{grid-template-columns:1fr 96px}.bottom-shadow{right:96px}
+}
+@media(max-width:820px){
+  .home-main{grid-template-columns:1fr}.home-copy{padding:42px 24px 100px;border-right:none}.home-visual{display:none}
+  html{scroll-snap-type:none}.topbar{height:auto;min-height:78px;grid-template-columns:1fr 80px}.logo{padding:0 20px}.nav{display:none}.viewport{padding-top:0}.panel{height:auto;min-height:100vh;padding-top:78px;grid-template-columns:1fr}.side{display:none}.main{grid-template-columns:1fr}.left{padding:34px 24px;border-right:none}.stage{min-height:70vh;padding:20px 20px 92px}.bottom-shadow{right:0}.part1-view{inset:52px 20px 126px}.portrait-frame{height:min(64vh,620px)}.tabs{grid-template-columns:repeat(5,1fr);gap:6px}.tab{padding:7px}.tab span{display:none}.compare-wrap{position:relative;inset:auto;grid-template-columns:1fr;padding:56px 0 20px}.gif-wrap{position:relative;inset:auto;height:60vh;margin-top:54px}
+}
+
+/* revised single-image showcase */
+#part1 .media-box,#part2 .media-box{overflow:visible}
+.part1-view{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:34px 40px 34px 190px}
+.portrait-frame{position:relative;height:min(78vh,720px);aspect-ratio:2/3;border:1px solid var(--line);background:#0b0f12;box-shadow:0 28px 64px rgba(0,0,0,.42);overflow:hidden}
+.slide{position:absolute;inset:0;opacity:0;transition:opacity .32s ease,transform .32s ease;transform:scale(1.01)}
+.slide.active{opacity:1;transform:scale(1)}
+.slide img,.single-building img{width:100%;height:100%;object-fit:cover;display:block}
+.slide-label,.compare-caption{position:absolute;left:12px;bottom:12px;padding:8px 10px;background:rgba(0,0,0,.68);border:1px solid var(--line);font:800 .62rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase}.slide-label b,.compare-caption b{color:var(--accent)}
+.tabs{position:absolute;left:-228px;bottom:104px;z-index:20;width:350px;display:grid;grid-template-columns:repeat(5,1fr);gap:9px;pointer-events:auto}
+.tabs .tab{height:88px;padding:0;overflow:hidden;background:rgba(0,0,0,.46);border:1px solid var(--line)}
+.tabs .tab img{width:100%;height:100%;object-fit:cover;display:block;filter:brightness(.68);transition:.22s ease}
+.tabs .tab.active img,.tabs .tab:hover img{filter:brightness(1)}
+.tabs .tab.active,.tabs .tab:hover{border-color:var(--accent);box-shadow:0 0 0 1px rgba(89,216,242,.22) inset}
+.tab{aspect-ratio:2/3;padding:0;border:1px solid var(--line);background:#0a0d0f;overflow:hidden;cursor:pointer;position:relative}
+.tab img{width:100%;height:100%;object-fit:cover;display:block;opacity:.58;transition:.22s}.tab.active img,.tab:hover img{opacity:1}.tab.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.tab b,.tab span{display:none}
+.part2-view{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:54px 50px 54px 210px}
+.part2-tabs{position:absolute;left:-228px;bottom:104px;z-index:22;display:grid;grid-template-columns:repeat(2,142px);gap:12px;pointer-events:auto}
+.part2-tab{height:96px;padding:0;border:1px solid var(--line);background:rgba(0,0,0,.48);cursor:pointer;overflow:hidden;transition:.22s ease}
+.part2-tab img{width:100%;height:100%;object-fit:cover;display:block;filter:brightness(.68);transition:.22s ease}
+.part2-tab.active,.part2-tab:hover{border-color:var(--accent);box-shadow:0 0 0 1px rgba(89,216,242,.22) inset}
+.part2-tab.active img,.part2-tab:hover img{filter:brightness(1)}
+.single-building{position:relative;width:min(860px,74vw);aspect-ratio:3/2;border:1px solid var(--line);background:#0a0d10;overflow:hidden;box-shadow:0 28px 64px rgba(0,0,0,.42);cursor:pointer}
+.single-building .building-slide{position:absolute;inset:0;opacity:0;transition:opacity .32s ease,transform .32s ease;transform:scale(1.008)}
+.single-building .building-slide.active{opacity:1;transform:scale(1)}
+.single-building .building-slide img{width:100%;height:100%;object-fit:cover;display:block}
+.click-hint{position:absolute;right:14px;bottom:14px;z-index:9;font:700 .6rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.13em;text-transform:uppercase;color:#cfd8dc;background:rgba(0,0,0,.6);border:1px solid var(--line);padding:8px 10px}
+@media(max-width:820px){.left{position:relative;width:auto;bottom:auto;padding:34px 24px 14px;background:linear-gradient(180deg,rgba(3,5,6,.9),rgba(3,5,6,.3))}.stage{position:relative;inset:auto;min-height:68vh;padding:0 18px 92px}.part1-view,.part2-view{position:relative;inset:auto;padding:30px 0}.tabs{position:relative;left:auto;bottom:auto;width:100%;padding:0 18px 18px}.part2-tabs{position:relative;left:auto;bottom:auto;grid-template-columns:repeat(2,minmax(0,1fr));padding:0 18px 18px}.part2-tab{height:110px}.portrait-frame{height:min(60vh,620px)}.single-building{width:100%}}
+
+
+/* layout refinements — full-width lower rule, centered scroll, raised preview layer */
+.left{
+  bottom:96px;
+  padding-left:104px;
+}
+.stage{
+  inset:0 0 96px 0;
+  padding-left:330px;
+  padding-right:42px;
+}
+
+/* thumbnails sit above every text/image layer */
+.tabs,
+.part2-tabs{
+  z-index:45;
+}
+
+/* slightly smaller hero images to make room for the raised bottom rule */
+.portrait-frame{
+  height:min(67vh,620px);
+}
+.single-building{
+  width:min(760px,66vw);
+}
+.part1-view{
+  padding:34px 48px 42px 205px;
+}
+.part2-view{
+  padding:54px 58px 58px 225px;
+}
+
+/* extend the lower divider through the right-side chapter rail */
+.bottom-shadow{
+  left:0;
+  right:-118px;
+  height:96px;
+  z-index:40;
+  border-top:1px solid rgba(255,255,255,.22);
+  background:linear-gradient(180deg,rgba(0,0,0,.10),rgba(0,0,0,.82));
+  box-shadow:0 -24px 54px rgba(0,0,0,.34) inset,0 -16px 36px rgba(0,0,0,.14);
+}
+.bottom-shadow .scroll{
+  left:50%;
+  bottom:24px;
+  transform:translateX(-50%);
+  z-index:3;
+}
+
+/* clean home composition: remove the INDEX badge and its framed display block */
+.home-visual::before{
+  display:none;
+}
+.home-index{
+  display:none;
+}
+.home-copy{
+  padding-left:104px;
+}
+.home-visual::after{
+  right:56px;
+  bottom:122px;
+  opacity:.72;
+}
+
+@media(max-width:1050px){
+  .left{padding-left:64px;bottom:92px}
+  .stage{padding-left:260px;padding-right:28px;inset-bottom:92px}
+  .bottom-shadow{right:-96px;height:92px}
+  .home-copy{padding-left:64px}
+  .portrait-frame{height:min(64vh,580px)}
+  .single-building{width:min(700px,68vw)}
+}
+@media(max-width:820px){
+  .left{bottom:auto;padding-left:24px}
+  .stage{inset:auto;padding-left:18px;padding-right:18px}
+  .bottom-shadow{right:0;height:78px}
+  .home-copy{padding-left:24px}
+  .portrait-frame{height:min(58vh,560px)}
+  .single-building{width:100%}
+}
+
+
+
+/* === refinement 2026-09-01: clean rails / thumbnails / scroll cue === */
+/* top navigation: no separators between PERSPECTIVE and menu items */
+.logo{border-right:none !important;}
+.nav a,.nav a:last-child{border-left:none !important;border-right:none !important;}
+
+/* VISUAL STUDY divider is the continuation of the right chapter rail */
+.tools{border-left:1px solid var(--line) !important;}
+
+/* let the full-width lower rule pass underneath the right chapter rail */
+.main{overflow:visible !important;}
+.bottom-shadow{
+  right:-118px !important;
+  border-top:1px solid var(--line) !important;
+  z-index:46 !important;
+}
+
+/* scroll cue: center of the full viewport and repeat a downward fade motion */
+.bottom-shadow .scroll{
+  left:calc(50% + 59px) !important;
+  animation:scroll-drop 2.15s cubic-bezier(.4,0,.2,1) infinite;
+  will-change:transform,opacity;
+}
+@keyframes scroll-drop{
+  0%{transform:translate(-50%,-5px);opacity:0}
+  14%{opacity:.95}
+  64%{transform:translate(-50%,10px);opacity:.9}
+  100%{transform:translate(-50%,24px);opacity:0}
+}
+
+/* text keeps its dark glass only around the heading/meta, not over thumbnails */
+.left{
+  background:none !important;
+  isolation:isolate;
+}
+.left::before{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  left:0;
+  right:-44px;
+  top:0;
+  bottom:0;
+  background:linear-gradient(90deg,rgba(3,5,6,.93) 0%,rgba(3,5,6,.72) 72%,rgba(3,5,6,0) 100%);
+  pointer-events:none;
+}
+
+/* thumbnail strips always render cleanly above glass overlays */
+.tabs,.part2-tabs{
+  z-index:70 !important;
+  isolation:isolate;
+  filter:none !important;
+}
+.tabs .tab,.part2-tab{
+  background:#090c0e !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+.tabs .tab img,.part2-tab img{
+  position:relative;
+  z-index:2;
+}
+
+@media(max-width:1050px){
+  .bottom-shadow{right:-96px !important;}
+  .bottom-shadow .scroll{left:calc(50% + 48px) !important;}
+}
+@media(max-width:820px){
+  .bottom-shadow{right:0 !important;}
+  .bottom-shadow .scroll{left:50% !important;}
+  .left::before{bottom:0;right:0;}
+}
+
+/* === refinement: active nav label + right-shifted navigation === */
+.nav{
+  justify-content:flex-end !important;
+  padding-right:18px;
+  gap:18px;
+}
+.nav a{
+  min-width:auto !important;
+  padding:30px 8px 20px !important;
+  align-items:flex-start;
+}
+.nav a small{
+  color:#9ba4aa;
+  transition:color .22s ease;
+}
+.nav a.active,
+.nav a.active small{
+  color:var(--accent) !important;
+}
+@media(max-width:1050px){
+  .nav{gap:10px;padding-right:10px}
+  .nav a{padding-left:6px !important;padding-right:6px !important}
+}
+
+/* === refinement: clean hero images + image-local counters === */
+.media-title{display:none !important;}
+.slide-label,.compare-caption,.click-hint{display:none !important;}
+.portrait-frame,.single-building{cursor:pointer;}
+.image-count{
+  top:12px !important;
+  right:12px !important;
+  left:auto !important;
+  z-index:80 !important;
+  padding:7px 9px;
+  border:1px solid var(--line);
+  background:rgba(0,0,0,.52);
+  backdrop-filter:blur(7px);
+  -webkit-backdrop-filter:blur(7px);
+  color:var(--accent);
+}
+
+
+/* === 2026-09-01 rail + counter refinement === */
+/* One uninterrupted rail line for the top VISUAL STUDY divider and the side navigation. */
+.topbar::after{
+  content:"";
+  position:fixed;
+  top:0;
+  bottom:0;
+  right:118px;
+  width:1px;
+  background:var(--line);
+  z-index:90;
+  pointer-events:none;
+}
+.tools,.side{border-left:none !important;}
+
+/* Remove the subtle lower-right tint so the area around the photograph is uniform. */
+#part1 .media-box,#part2 .media-box{background:transparent !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;}
+#part1 .media-box::before,#part2 .media-box::before{display:none !important;}
+
+/* Counter is outside the image, aligned with its top-right edge. */
+.portrait-stack,.building-stack{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  width:max-content;
+  max-width:100%;
+}
+.image-count{
+  position:static !important;
+  margin:0 0 9px 0 !important;
+  padding:0 !important;
+  border:0 !important;
+  background:transparent !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+  color:var(--accent) !important;
+  font:800 .68rem ui-monospace,SFMono-Regular,Menlo,monospace !important;
+  letter-spacing:.14em !important;
+  line-height:1 !important;
+  z-index:80 !important;
+}
+@media(max-width:1050px){
+  .topbar::after{right:96px;}
+}
+@media(max-width:820px){
+  .topbar::after{display:none;}
+}
+
+
+/* === 2026-09-01 latest spacing / line / scroll refinement === */
+/* Remove the horizontal rule beneath the fixed top navigation. */
+.topbar{border-bottom:none !important;}
+
+/* Keep the right navigation divider continuous from the very top of the viewport. */
+.topbar::after{
+  top:0 !important;
+  bottom:0 !important;
+  height:100vh !important;
+  position:fixed !important;
+}
+
+/* Raise the full-width lower rule and its shadow band. */
+.bottom-shadow{
+  bottom:34px !important;
+  height:82px !important;
+}
+.left{bottom:116px !important;}
+.stage{inset:0 0 116px 0 !important;}
+
+/* Scroll cue sits higher; it fades in place instead of disappearing downward. */
+.bottom-shadow .scroll{
+  bottom:30px !important;
+  animation:scroll-fade 1.9s ease-in-out infinite !important;
+  will-change:opacity,transform;
+}
+@keyframes scroll-fade{
+  0%{transform:translate(-50%,-1px);opacity:.18}
+  22%{opacity:1}
+  62%{transform:translate(-50%,7px);opacity:1}
+  100%{transform:translate(-50%,7px);opacity:0}
+}
+
+@media(max-width:1050px){
+  .left{bottom:108px !important;}
+  .stage{inset:0 0 108px 0 !important;}
+  .bottom-shadow{bottom:28px !important;height:78px !important;}
+}
+@media(max-width:820px){
+  .left{bottom:auto !important;}
+  .stage{inset:auto !important;}
+  .bottom-shadow{bottom:0 !important;height:72px !important;}
+}
+
+
+/* === 2026-09-01 course header refinement === */
+/* Four catalog items share the available header width evenly. */
+.nav{
+  display:grid !important;
+  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  gap:0 !important;
+  padding:0 !important;
+  justify-content:stretch !important;
+  align-items:stretch !important;
+}
+.nav a{
+  min-width:0 !important;
+  width:100% !important;
+  padding:30px 12px 20px !important;
+  align-items:flex-start !important;
+  justify-content:center !important;
+}
+/* Make the shared PERSPECTIVE / right-side navigation divider slightly stronger. */
+.topbar::after{width:2px !important;}
+
+
+/* === 2026-09-01 navigation + annotation refinement === */
+/* Keep the four navigation items equally spaced as a right-aligned group. */
+.nav{
+  display:flex !important;
+  align-items:stretch !important;
+  justify-content:flex-end !important;
+  gap:46px !important;
+  padding:0 34px 0 0 !important;
+}
+.nav a{
+  width:116px !important;
+  min-width:116px !important;
+  padding:30px 0 20px !important;
+  align-items:flex-start !important;
+  justify-content:center !important;
+}
+
+/* Match the lower horizontal rule to the 2px right navigation divider. */
+.bottom-shadow{border-top:2px solid var(--line) !important;}
+
+/* Small observation note beneath Part 1 shooting data; no font replacement. */
+.observation-note{
+  margin-top:12px;
+  padding-top:12px;
+  border-top:none;
+  color:#aab4b9;
+  font-size:.68rem;
+  line-height:1.55;
+  letter-spacing:.05em;
+  text-transform:none;
+}
+
+@media(max-width:1050px){
+  .nav{gap:24px !important;padding-right:18px !important;}
+  .nav a{width:94px !important;min-width:94px !important;}
+}
+
+
+/* Final-page return-to-top cue */
+.back-top{
+  position:absolute;
+  left:50%;
+  bottom:30px;
+  transform:translateX(-50%);
+  z-index:30;
+  width:28px;
+  height:28px;
+  display:block;
+  opacity:.82;
+}
+.back-top::before{
+  content:"";
+  position:absolute;
+  left:5px;
+  top:8px;
+  width:16px;
+  height:16px;
+  border-left:2px solid #647078;
+  border-top:2px solid #647078;
+  transform:rotate(45deg);
+}
+
+
+/* === 2026-09-01 arrow + nav spacing refinement === */
+.nav{
+  gap:32px !important;
+  padding-right:34px !important;
+}
+.bottom-shadow .scroll{
+  left:47% !important;
+  color:#7a868d !important;
+  font-weight:800 !important;
+}
+.bottom-shadow .scroll:after{
+  width:20px !important;
+  height:20px !important;
+  border-right:3px solid #6d7980 !important;
+  border-bottom:3px solid #6d7980 !important;
+}
+.back-top{
+  left:47% !important;
+  bottom:30px !important;
+  width:28px !important;
+  height:28px !important;
+  opacity:1 !important;
+  animation:back-top-fade 1.9s ease-in-out infinite !important;
+  will-change:opacity;
+}
+.back-top::before{
+  left:4px !important;
+  top:8px !important;
+  width:18px !important;
+  height:18px !important;
+  border-left:3px solid #6d7980 !important;
+  border-top:3px solid #6d7980 !important;
+}
+@keyframes back-top-fade{
+  0%{opacity:.18}
+  22%{opacity:1}
+  62%{opacity:1}
+  100%{opacity:0}
+}
+@media(max-width:1050px){
+  .nav{gap:18px !important;padding-right:18px !important;}
+  .bottom-shadow .scroll,.back-top{left:47% !important;}
+}
+@media(max-width:820px){
+  .bottom-shadow .scroll,.back-top{left:50% !important;}
+}
+
+
+/* === latest cue refinement: arrows only === */
+.bottom-shadow .scroll{
+  font-size:0 !important;
+  letter-spacing:0 !important;
+  line-height:0 !important;
+}
+.bottom-shadow .scroll:after{
+  margin:0 auto !important;
+}
+
+/* Animate the final-page up arrow itself, not just its container. */
+.back-top,
+.back-top::before{
+  animation:cue-fade 1.9s ease-in-out infinite !important;
+}
+@keyframes cue-fade{
+  0%{opacity:.18}
+  22%{opacity:1}
+  62%{opacity:1}
+  100%{opacity:0}
+}
+
+
+/* === down arrow timing refinement === */
+@keyframes scrollCue{
+  0%   { opacity:0; transform:translate(-50%,0); }
+  8%   { opacity:1; transform:translate(-50%,0); }
+  13%  { opacity:1; transform:translate(-50%,0); } /* ~0.1s visual hold */
+  58%  { opacity:1; transform:translate(-50%,10px); }
+  78%  { opacity:0; transform:translate(-50%,10px); }
+  100% { opacity:0; transform:translate(-50%,0); }
+}
+
+
+/* === 2026-09-01 nav font + 0.3s arrow hold === */
+.nav a,
+.nav a small{
+  font-family: Georgia, serif !important;
+}
+
+/* 1.9s loop: fade in, remain still for ~0.3s, then move down and fade out. */
+@keyframes scroll-fade{
+  0%   { transform:translate(-50%,-1px); opacity:.18; }
+  20%  { transform:translate(-50%,-1px); opacity:1; }
+  38%  { transform:translate(-50%,-1px); opacity:1; } /* ~0.3 s hold */
+  68%  { transform:translate(-50%,7px); opacity:1; }
+  100% { transform:translate(-50%,7px); opacity:0; }
+}
+
+/* === author hover panel === */
+.tools{
+  position:relative;
+  overflow:visible;
+}
+.author-trigger{
+  width:48px;
+  height:48px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:var(--accent);
+  cursor:pointer;
+}
+.author-trigger svg{
+  width:25px;
+  height:25px;
+  stroke:currentColor;
+}
+.author-panel{
+  position:absolute;
+  z-index:120;
+  top:0;
+  right:0;
+  width:280px;
+  min-height:100vh;
+  padding:112px 24px 28px;
+  background:var(--accent);
+  border-left:2px solid rgba(255,255,255,.34);
+  box-shadow:-24px 0 54px rgba(0,0,0,.34);
+  opacity:0;
+  transform:translateX(100%);
+  pointer-events:none;
+  transition:opacity .24s ease,transform .24s ease;
+}
+.tools:hover .author-panel,
+.tools:focus-within .author-panel{
+  opacity:1;
+  transform:translateX(0);
+  pointer-events:auto;
+}
+.author-label{
+  font:800 .62rem ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:rgba(5,16,20,.62);
+}
+.author-photo{
+  width:88px;
+  height:88px;
+  display:block;
+  margin:0 0 18px;
+  object-fit:cover;
+  background:rgba(5,16,20,.12);
+}
+.author-name{
+  margin-top:14px;
+  font-family:Georgia,serif;
+  font-size:1.55rem;
+  font-weight:700;
+  line-height:1.1;
+  color:#fff;
+}
+.author-email{
+  display:block;
+  margin-top:12px;
+  font:700 .78rem ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.03em;
+  color:#d8f7ff;
+}
+.author-credit{
+  margin-top:18px;
+  font-size:.82rem;
+  line-height:1.45;
+  color:#d8f7ff;
+}
+.part3-note{
+  margin-top:24px;
+  max-width:330px;
+  color:#aeb8bd;
+  font-size:.92rem;
+  line-height:1.58;
+}
+@media(max-width:820px){
+  .author-panel{
+    width:min(280px,78vw);
+    min-height:100vh;
+    padding-top:78px;
+  }
+}
+
+</style>
+</head>
+<body>
+<div class="bg"></div><div class="grid"></div>
+<header class="topbar">
+  <a href="#home" class="logo"><span class="logo-mark"></span>COMPSCI 180</a>
+  <nav class="nav">
+    <a href="#home" class="active" data-target="home">Index<small>Home</small></a>
+    <a href="#part1" data-target="part1">Part 01<small>Portrait</small></a>
+    <a href="#part2" data-target="part2">Part 02<small>Architecture</small></a>
+    <a href="#part3" data-target="part3">Part 03<small>Motion</small></a>
+  </nav>
+  <div class="tools">
+    <button class="author-trigger" type="button" aria-label="Author information">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20 21a8 8 0 0 0-16 0"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+    </button>
+    <div class="author-panel" role="status">
+      <img class="author-photo" src="pj1/author.jpg" alt="Author portrait" onerror="this.style.display='none'">
+      <div class="author-label">Author</div>
+      <div class="author-name">yihan chen</div>
+      <a class="author-email" href="mailto:troptroprigolo.d@gmail.com">troptroprigolo.d@gmail.com</a>
+      <div class="author-credit">Thanks to ChatGPT for helping build this webpage.</div>
+    </div>
+  </div>
+</header>
+
+<main class="viewport">
+
+  <section class="panel" id="home">
+    <div class="home-main">
+      <div class="home-copy">
+        <div class="eyebrow">Camera Geometry // Visual Study</div>
+        <h1 class="home-title">Programming<span>Project #1</span></h1>
+        <p class="home-sub">A short visual experiment on camera distance, focal length, and perspective.</p>
+        <a class="home-enter" href="#part1">Enter Part 01</a>
+      </div>
+      <div class="home-visual">
+      </div>
+      <div class="bottom-shadow"><div class="scroll">scroll</div></div>
+    </div>
+    <aside class="side">
+      <div class="side-inner"><div class="side-num">00</div><div class="side-sub">Index</div><div class="side-dots"><a href="#home" class="active">0</a><a href="#part1">1</a><a href="#part2">2</a><a href="#part3">3</a></div></div>
+    </aside>
+  </section>
+  <section class="panel" id="part1">
+    <div class="main">
+      <div class="left">
+        <div>
+          <div class="kicker">Part 01 // Portrait Perspective</div>
+          <h1>SELFIE<br><span>DISTORTION</span></h1>
+          <div class="shot-meta" id="p1meta">
+            <div class="row"><span class="label">Focal length</span><span class="value" id="p1focal">— mm</span></div>
+            <div class="row"><span class="label">Distance</span><span class="value" id="p1distance">— m</span></div>
+            <div class="observation-note">Compare the width of the glasses with the width of the face to see the perspective difference across focal lengths.</div>
+          </div>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="media-box">
+          <div class="part1-view">
+            <div class="portrait-stack">
+              <div class="media-count image-count" id="p1count">01 / 05</div>
+              <div class="portrait-frame" id="portraitToggle">
+              <div class="slide active" data-index="0"><img src="pj1/part1-01.jpg" alt="Part 1 image 1" onerror="this.style.display='none'"><div class="placeholder">part1-01.jpg<span>4000 × 6000 portrait</span></div></div>
+              <div class="slide" data-index="1"><img src="pj1/part1-02.jpg" alt="Part 1 image 2" onerror="this.style.display='none'"><div class="placeholder">part1-02.jpg<span>4000 × 6000 portrait</span></div></div>
+              <div class="slide" data-index="2"><img src="pj1/part1-03.jpg" alt="Part 1 image 3" onerror="this.style.display='none'"><div class="placeholder">part1-03.jpg<span>4000 × 6000 portrait</span></div></div>
+              <div class="slide" data-index="3"><img src="pj1/part1-04.jpg" alt="Part 1 image 4" onerror="this.style.display='none'"><div class="placeholder">part1-04.jpg<span>4000 × 6000 portrait</span></div></div>
+              <div class="slide" data-index="4"><img src="pj1/part1-05.jpg" alt="Part 1 image 5" onerror="this.style.display='none'"><div class="placeholder">part1-05.jpg<span>4000 × 6000 portrait</span></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="tabs">
+            <button class="tab active" data-index="0" aria-label="Show portrait 1"><img src="pj1/part1-01.jpg" alt=""></button>
+            <button class="tab" data-index="1" aria-label="Show portrait 2"><img src="pj1/part1-02.jpg" alt=""></button>
+            <button class="tab" data-index="2" aria-label="Show portrait 3"><img src="pj1/part1-03.jpg" alt=""></button>
+            <button class="tab" data-index="3" aria-label="Show portrait 4"><img src="pj1/part1-04.jpg" alt=""></button>
+            <button class="tab" data-index="4" aria-label="Show portrait 5"><img src="pj1/part1-05.jpg" alt=""></button>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-shadow"><div class="scroll">scroll</div></div>
+    </div>
+    <aside class="side">
+      <div class="side-inner"><div class="side-num">01</div><div class="side-sub">Portrait</div><div class="side-dots"><a href="#home">0</a><a href="#part1" class="active">1</a><a href="#part2">2</a><a href="#part3">3</a></div></div>
+    </aside>
+  </section>
+
+  <section class="panel" id="part2">
+    <div class="main">
+      <div class="left">
+        <div>
+          <div class="kicker">Part 02 // Architectural Perspective</div>
+          <h1>DEPTH<br><span>COMPRESSION</span></h1>
+          <div class="shot-meta">
+            <div class="row"><span class="label">Focal length</span><span class="value" id="p2focal">— mm</span></div>
+            <div class="row"><span class="label">Distance</span><span class="value" id="p2distance">— m</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="media-box">
+          <div class="part2-view">
+            <div class="building-stack">
+              <div class="media-count image-count" id="p2count">01 / 02</div>
+              <div class="single-building" id="buildingToggle">
+              <div class="building-slide active" data-index="0"><img src="pj1/part2-01.jpg" alt="Far building view" onerror="this.style.display='none'"><div class="placeholder">part2-01.jpg<span>3:2 landscape</span></div></div>
+              <div class="building-slide" data-index="1"><img src="pj1/part2-02.jpg" alt="Close building view" onerror="this.style.display='none'"><div class="placeholder">part2-02.jpg<span>3:2 landscape</span></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="part2-tabs" aria-label="Architectural image previews">
+            <button class="part2-tab active" data-index="0" aria-label="Show building image 1"><img src="pj1/part2-01.jpg" alt=""></button>
+            <button class="part2-tab" data-index="1" aria-label="Show building image 2"><img src="pj1/part2-02.jpg" alt=""></button>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-shadow"><div class="scroll">scroll</div></div>
+    </div>
+    <aside class="side">
+      <div class="side-inner"><div class="side-num">02</div><div class="side-sub">Architecture</div><div class="side-dots"><a href="#home">0</a><a href="#part1">1</a><a href="#part2" class="active">2</a><a href="#part3">3</a></div></div>
+    </aside>
+  </section>
+
+  <section class="panel" id="part3">
+    <div class="main">
+      <div class="left">
+        <div>
+          <div class="kicker">Part 03 // Dolly Zoom</div>
+          <h1>DOLLY<br><span>ZOOM</span></h1>
+          <p class="part3-note">With the Golden Gate Bridge in the background, but blocked by the doll.</p>
+          <!-- <div class="key"><b>GIF slot ready.</b></div> -->
+        </div>
+      </div>
+      <div class="stage">
+        <div class="media-box">
+          <div class="media-title">Animated Demonstration</div>
+          <div class="media-count">GIF</div>
+          <div class="gif-wrap"><img src="pj1/part3-demo.gif" alt="Part 3 GIF" onerror="this.style.display='none'"><div class="placeholder">part3-demo.gif<span>reserved animated media</span></div></div>
+        </div>
+      </div>
+      <div class="bottom-shadow"><a class="back-top" href="#home" aria-label="Back to top"></a></div>
+    </div>
+    <aside class="side">
+      <div class="side-inner"><div class="side-num">03</div><div class="side-sub">Motion</div><div class="side-dots"><a href="#home">0</a><a href="#part1">1</a><a href="#part2">2</a><a href="#part3" class="active">3</a></div></div>
+    </aside>
+  </section>
+</main>
+<script>
+document.querySelectorAll('img').forEach(img=>img.addEventListener('load',()=>{const p=img.parentElement.querySelector('.placeholder');if(p)p.style.display='none'}));
+const sections=[...document.querySelectorAll('.panel')];
+const nav=[...document.querySelectorAll('.nav a')];
+const io=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){nav.forEach(a=>a.classList.toggle('active',a.dataset.target===e.target.id));}})},{threshold:.55});
+sections.forEach(s=>io.observe(s));
+const slides=[...document.querySelectorAll('#part1 .slide')];
+const tabs=[...document.querySelectorAll('#part1 .tab')];
+const count=document.getElementById('p1count');
+const p1focal=document.getElementById('p1focal');
+const p1distance=document.getElementById('p1distance');
+const p1data=[
+  {focal:'24 mm',distance:'20 cm'},
+  {focal:'52 mm',distance:'50 cm'},
+  {focal:'82 mm',distance:'100 cm'},
+  {focal:'150 mm',distance:'200 cm'},
+  {focal:'298 mm',distance:'250 cm'}
+];
+let p1index=0;
+function show(i){p1index=i;slides.forEach((s,j)=>s.classList.toggle('active',j===i));tabs.forEach((t,j)=>t.classList.toggle('active',j===i));count.textContent=String(i+1).padStart(2,'0')+' / 05';p1focal.textContent=p1data[i].focal;p1distance.textContent=p1data[i].distance}
+tabs.forEach(t=>t.addEventListener('click',()=>show(Number(t.dataset.index))));
+const portraitToggle=document.getElementById('portraitToggle');
+portraitToggle.addEventListener('click',()=>show((p1index+1)%slides.length));
+show(0);
+
+const building=document.getElementById('buildingToggle');
+const buildingSlides=[...document.querySelectorAll('.building-slide')];
+const p2count=document.getElementById('p2count');
+const p2focal=document.getElementById('p2focal');
+const p2distance=document.getElementById('p2distance');
+const p2tabs=[...document.querySelectorAll('.part2-tab')];
+const p2data=[{focal:'24 mm',distance:'10 m'},{focal:'30 mm',distance:'30 m'}];
+let p2index=0;
+function showBuilding(i){p2index=i;buildingSlides.forEach((el,j)=>el.classList.toggle('active',j===i));p2tabs.forEach((el,j)=>el.classList.toggle('active',j===i));p2count.textContent=String(i+1).padStart(2,'0')+' / 02';p2focal.textContent=p2data[i].focal;p2distance.textContent=p2data[i].distance}
+building.addEventListener('click',()=>showBuilding((p2index+1)%2));
+p2tabs.forEach(t=>t.addEventListener('click',()=>showBuilding(Number(t.dataset.index))));
+showBuilding(0);
+</script>
+</body>
+</html>
