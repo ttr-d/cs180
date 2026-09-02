@@ -289,9 +289,9 @@ h1 span{color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.44)}
   pointer-events:none;
 }
 
-/* thumbnail strips always render cleanly above glass overlays */
+/* thumbnail strips stay with the main image layer, above only the local text glass */
 .tabs,.part2-tabs{
-  z-index:70 !important;
+  z-index:12 !important;
   isolation:isolate;
   filter:none !important;
 }
