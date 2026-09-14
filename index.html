@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>COMPSCI 180 · Programming Project #1</title>
+<title>COMPSCI 180 · Programming Project #0</title>
 <style>
 :root{
   --bg:#050607;
@@ -738,10 +738,8 @@ h1 span{color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.44)}
 <header class="topbar">
   <a href="#home" class="logo"><span class="logo-mark"></span>COMPSCI 180</a>
   <nav class="nav">
-    <a href="#home" class="active" data-target="home">Index<small>Home</small></a>
-    <a href="#part1" data-target="part1">Part 01<small>Portrait</small></a>
-    <a href="#part2" data-target="part2">Part 02<small>Architecture</small></a>
-    <a href="#part3" data-target="part3">Part 03<small>Motion</small></a>
+    <a href="index.html" class="active" aria-current="page">PJ0<small>Camera Geometry</small></a>
+    <a href="pj1/index.html">PJ1<small>Colorizing</small></a>
   </nav>
   <div class="tools">
     <button class="author-trigger" type="button" aria-label="Author information">
@@ -751,7 +749,7 @@ h1 span{color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.44)}
       </svg>
     </button>
     <div class="author-panel" role="status">
-      <img class="author-photo" src="pj1/author.jpg" alt="Author portrait" onerror="this.style.display='none'">
+      <img class="author-photo" src="pj0/author.jpg" alt="Author portrait" onerror="this.style.display='none'">
       <div class="author-label">Author</div>
       <div class="author-name">yihan chen</div>
       <a class="author-email" href="mailto:troptroprigolo.d@gmail.com">troptroprigolo.d@gmail.com</a>
@@ -766,7 +764,7 @@ h1 span{color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.44)}
     <div class="home-main">
       <div class="home-copy">
         <div class="eyebrow">Camera Geometry // Visual Study</div>
-        <h1 class="home-title">Programming<span>Project #1</span></h1>
+        <h1 class="home-title">Programming<span>Project #0</span></h1>
         <p class="home-sub">A short visual experiment on camera distance, focal length, and perspective.</p>
         <a class="home-enter" href="#part1">Enter Part 01</a>
       </div>
@@ -797,20 +795,20 @@ h1 span{color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.44)}
             <div class="portrait-stack">
               <div class="media-count image-count" id="p1count">01 / 05</div>
               <div class="portrait-frame" id="portraitToggle">
-              <div class="slide active" data-index="0"><img src="pj1/part1-01.jpg" alt="Part 1 image 1" onerror="this.style.display='none'"><div class="placeholder">part1-01.jpg<span>4000 × 6000 portrait</span></div></div>
-              <div class="slide" data-index="1"><img src="pj1/part1-02.jpg" alt="Part 1 image 2" onerror="this.style.display='none'"><div class="placeholder">part1-02.jpg<span>4000 × 6000 portrait</span></div></div>
-              <div class="slide" data-index="2"><img src="pj1/part1-03.jpg" alt="Part 1 image 3" onerror="this.style.display='none'"><div class="placeholder">part1-03.jpg<span>4000 × 6000 portrait</span></div></div>
-              <div class="slide" data-index="3"><img src="pj1/part1-04.jpg" alt="Part 1 image 4" onerror="this.style.display='none'"><div class="placeholder">part1-04.jpg<span>4000 × 6000 portrait</span></div></div>
-              <div class="slide" data-index="4"><img src="pj1/part1-05.jpg" alt="Part 1 image 5" onerror="this.style.display='none'"><div class="placeholder">part1-05.jpg<span>4000 × 6000 portrait</span></div></div>
+              <div class="slide active" data-index="0"><img src="pj0/part1-01.jpg" alt="Part 1 image 1" onerror="this.style.display='none'"><div class="placeholder">part1-01.jpg<span>4000 × 6000 portrait</span></div></div>
+              <div class="slide" data-index="1"><img src="pj0/part1-02.jpg" alt="Part 1 image 2" onerror="this.style.display='none'"><div class="placeholder">part1-02.jpg<span>4000 × 6000 portrait</span></div></div>
+              <div class="slide" data-index="2"><img src="pj0/part1-03.jpg" alt="Part 1 image 3" onerror="this.style.display='none'"><div class="placeholder">part1-03.jpg<span>4000 × 6000 portrait</span></div></div>
+              <div class="slide" data-index="3"><img src="pj0/part1-04.jpg" alt="Part 1 image 4" onerror="this.style.display='none'"><div class="placeholder">part1-04.jpg<span>4000 × 6000 portrait</span></div></div>
+              <div class="slide" data-index="4"><img src="pj0/part1-05.jpg" alt="Part 1 image 5" onerror="this.style.display='none'"><div class="placeholder">part1-05.jpg<span>4000 × 6000 portrait</span></div></div>
               </div>
             </div>
           </div>
           <div class="tabs">
-            <button class="tab active" data-index="0" aria-label="Show portrait 1"><img src="pj1/part1-01.jpg" alt=""></button>
-            <button class="tab" data-index="1" aria-label="Show portrait 2"><img src="pj1/part1-02.jpg" alt=""></button>
-            <button class="tab" data-index="2" aria-label="Show portrait 3"><img src="pj1/part1-03.jpg" alt=""></button>
-            <button class="tab" data-index="3" aria-label="Show portrait 4"><img src="pj1/part1-04.jpg" alt=""></button>
-            <button class="tab" data-index="4" aria-label="Show portrait 5"><img src="pj1/part1-05.jpg" alt=""></button>
+            <button class="tab active" data-index="0" aria-label="Show portrait 1"><img src="pj0/part1-01.jpg" alt=""></button>
+            <button class="tab" data-index="1" aria-label="Show portrait 2"><img src="pj0/part1-02.jpg" alt=""></button>
+            <button class="tab" data-index="2" aria-label="Show portrait 3"><img src="pj0/part1-03.jpg" alt=""></button>
+            <button class="tab" data-index="3" aria-label="Show portrait 4"><img src="pj0/part1-04.jpg" alt=""></button>
+            <button class="tab" data-index="4" aria-label="Show portrait 5"><img src="pj0/part1-05.jpg" alt=""></button>
           </div>
         </div>
       </div>
@@ -839,14 +837,14 @@ h1 span{color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.44)}
             <div class="building-stack">
               <div class="media-count image-count" id="p2count">01 / 02</div>
               <div class="single-building" id="buildingToggle">
-              <div class="building-slide active" data-index="0"><img src="pj1/part2-01.jpg" alt="Far building view" onerror="this.style.display='none'"><div class="placeholder">part2-01.jpg<span>3:2 landscape</span></div></div>
-              <div class="building-slide" data-index="1"><img src="pj1/part2-02.jpg" alt="Close building view" onerror="this.style.display='none'"><div class="placeholder">part2-02.jpg<span>3:2 landscape</span></div></div>
+              <div class="building-slide active" data-index="0"><img src="pj0/part2-01.jpg" alt="Far building view" onerror="this.style.display='none'"><div class="placeholder">part2-01.jpg<span>3:2 landscape</span></div></div>
+              <div class="building-slide" data-index="1"><img src="pj0/part2-02.jpg" alt="Close building view" onerror="this.style.display='none'"><div class="placeholder">part2-02.jpg<span>3:2 landscape</span></div></div>
               </div>
             </div>
           </div>
           <div class="part2-tabs" aria-label="Architectural image previews">
-            <button class="part2-tab active" data-index="0" aria-label="Show building image 1"><img src="pj1/part2-01.jpg" alt=""></button>
-            <button class="part2-tab" data-index="1" aria-label="Show building image 2"><img src="pj1/part2-02.jpg" alt=""></button>
+            <button class="part2-tab active" data-index="0" aria-label="Show building image 1"><img src="pj0/part2-01.jpg" alt=""></button>
+            <button class="part2-tab" data-index="1" aria-label="Show building image 2"><img src="pj0/part2-02.jpg" alt=""></button>
           </div>
         </div>
       </div>
@@ -871,7 +869,7 @@ h1 span{color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.44)}
         <div class="media-box">
           <div class="media-title">Animated Demonstration</div>
           <div class="media-count">GIF</div>
-          <div class="gif-wrap"><img src="pj1/part3-demo.gif" alt="Part 3 GIF" onerror="this.style.display='none'"><div class="placeholder">part3-demo.gif<span>reserved animated media</span></div></div>
+          <div class="gif-wrap"><img src="pj0/part3-demo.gif" alt="Part 3 GIF" onerror="this.style.display='none'"><div class="placeholder">part3-demo.gif<span>reserved animated media</span></div></div>
         </div>
       </div>
       <div class="bottom-shadow"><a class="back-top" href="#home" aria-label="Back to top"></a></div>
@@ -883,10 +881,6 @@ h1 span{color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.44)}
 </main>
 <script>
 document.querySelectorAll('img').forEach(img=>img.addEventListener('load',()=>{const p=img.parentElement.querySelector('.placeholder');if(p)p.style.display='none'}));
-const sections=[...document.querySelectorAll('.panel')];
-const nav=[...document.querySelectorAll('.nav a')];
-const io=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){nav.forEach(a=>a.classList.toggle('active',a.dataset.target===e.target.id));}})},{threshold:.55});
-sections.forEach(s=>io.observe(s));
 const slides=[...document.querySelectorAll('#part1 .slide')];
 const tabs=[...document.querySelectorAll('#part1 .tab')];
 const count=document.getElementById('p1count');
