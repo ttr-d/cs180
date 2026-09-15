@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CS 180 Project 1: colorizing the Prokudin-Gorskii collection with single-scale alignment, NCC, L2, and image pyramids.">
+  <title>CS 180 · Project 1 · Images of the Russian Empire</title>
+  <link rel="stylesheet" href="site.css">
+  <script src="site.js" defer></script>
+</head>
+<body>
+  <div class="reading-progress" aria-hidden="true"><span></span></div>
+
+  <header class="site-header">
+    <a class="brand" href="../index.html" aria-label="CS 180 home">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span>COMPSCI 180</span>
+    </a>
+    <nav class="project-nav" aria-label="Project navigation">
+      <a href="../index.html">PJ0<small>Camera Geometry</small></a>
+      <a class="active" href="index.html" aria-current="page">PJ1<small>Colorizing</small></a>
+    </nav>
+    <div class="profile-tools">
+      <button class="profile-trigger" type="button" aria-label="Open author profile" aria-expanded="false" aria-controls="profilePanel">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 21a8 8 0 0 0-16 0"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </button>
+      <aside class="profile-panel" id="profilePanel" aria-hidden="true" inert>
+        <div class="profile-avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21a8 8 0 0 0-16 0"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <p class="profile-label">Author profile</p>
+        <h2>yihan chen</h2>
+        <a href="mailto:troptroprigolo.d@gmail.com">troptroprigolo.d@gmail.com</a>
+        <p class="profile-credit">CS 180 · Computer Vision and Computational Photography</p>
+      </aside>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="top">
+      <img class="hero-image" src="web_assets/hero-emir.jpg" alt="Colorized portrait of the Emir of Bukhara">
+      <div class="hero-shade"></div>
+      <div class="hero-copy">
+        <p class="eyebrow">CS 180 · Programming Project 01</p>
+        <h1>Images of the<br><em>Russian Empire</em></h1>
+        <p class="hero-lede">Recovering color from three monochrome exposures.</p>
+        <p class="hero-lede"></p>
+        <a class="read-link" href="#overview">Read the approach <span aria-hidden="true">↓</span></a>
+      </div>
+      <p class="hero-caption">The Emir of Bukhara · aligned at full resolution</p>
+    </section>
+
+    <div class="article-layout">
+      <aside class="toc" aria-label="On this page">
+        <p>On this page</p>
+        <a href="#overview">00 · Overview</a>
+        <a href="#plate">01 · The plate</a>
+        <a href="#single-scale">02 · Single scale</a>
+        <a href="#metrics">03 · NCC vs L2</a>
+        <a href="#pyramid">04 · Pyramid</a>
+        <a href="#cropping">05 · Cropping</a>
+        <a href="#gallery">06 · Gallery</a>
+      </aside>
+
+      <article class="article">
+        <section class="story-section" id="overview" data-section>
+          <p class="section-index">00 / OVERVIEW</p>
+          <h2>Three exposures,<br>one color photograph.</h2>
+          <p class="lead">Sergei Prokudin-Gorskii recorded the same scene three times through blue, green, and red filters. The scans preserve those exposures as a single tall grayscale plate. The goal is to recover a color photograph by finding the translation that makes the three records coincide.</p>
+
+          <div class="pipeline" aria-label="Processing pipeline">
+            <div><b>01</b><span>Split</span><small>Stacked BGR plate</small></div>
+            <i aria-hidden="true">→</i>
+            <div><b>02</b><span>Align</span><small>G and R to B</small></div>
+            <i aria-hidden="true">→</i>
+            <div><b>03</b><span>Compose</span><small>Build RGB image</small></div>
+            <i aria-hidden="true">→</i>
+            <div><b>04</b><span>Crop</span><small>Detect plate borders</small></div>
+          </div>
+
+          <div class="note">
+            <strong>Translation model.</strong>
+            A displacement <code>(x, y)</code> is applied to a moving channel. Positive <code>x</code> moves right; positive <code>y</code> moves down. Blue remains fixed throughout.
+          </div>
+        </section>
+
+        <section class="story-section" id="plate" data-section>
+          <p class="section-index">01 / THE GLASS PLATE</p>
+          <h2>Splitting the scan.</h2>
+          <p>The input is a two-dimensional grayscale array of shape <code>(3H, W)</code>, not an ordinary <code>(H, W, 3)</code> color image. The filter order is blue, green, red. Any remainder below three equal sections is discarded.</p>
+
+          <div class="plate-layout wide-block">
+            <figure class="plate-figure">
+              <img src="web_assets/plate-cathedral.jpg" alt="Original Cathedral glass plate with three vertically stacked exposures">
+              <figcaption><b>Original scan</b><span>One grayscale image · three vertical records</span></figcaption>
+            </figure>
+            <div class="channel-stack">
+              <figure class="channel blue">
+                <img src="web_assets/channel-blue.jpg" alt="Cathedral blue-filter exposure">
+                <figcaption><b>B</b> Blue · reference</figcaption>
+              </figure>
+              <figure class="channel green">
+                <img src="web_assets/channel-green.jpg" alt="Cathedral green-filter exposure">
+                <figcaption><b>G</b> Green · moving</figcaption>
+              </figure>
+              <figure class="channel red">
+                <img src="web_assets/channel-red.jpg" alt="Cathedral red-filter exposure">
+                <figcaption><b>R</b> Red · moving</figcaption>
+              </figure>
+            </div>
+          </div>
+
+          <h3>Algorithm</h3>
+          <pre class="code-block" data-label="Python · channel extraction"><code><span class="tok-comment"># Split the stacked grayscale plate in BGR order</span>
+<span class="tok-name">height</span> <span class="tok-op">=</span> plate.shape[<span class="tok-number">0</span>] <span class="tok-op">//</span> <span class="tok-number">3</span>
+<span class="tok-blue">blue</span>   <span class="tok-op">=</span> plate[:height]
+<span class="tok-green">green</span>  <span class="tok-op">=</span> plate[height <span class="tok-op">:</span> <span class="tok-number">2</span> <span class="tok-op">*</span> height]
+<span class="tok-red">red</span>    <span class="tok-op">=</span> plate[<span class="tok-number">2</span> <span class="tok-op">*</span> height <span class="tok-op">:</span> <span class="tok-number">3</span> <span class="tok-op">*</span> height]</code></pre>
+        </section>
+
+        <section class="story-section" id="single-scale" data-section>
+          <p class="section-index">02 / SINGLE-SCALE ALIGNMENT</p>
+          <h2>Try every shift.</h2>
+          <p class="lead">For a small JPEG, exhaustive search is both transparent and effective. Therefore only a user-selected window (default to <code>15</code>) is tested, compare only valid overlapping pixels, and retain the shift with the best score.</p>
+
+          <div class="search-math">
+            <div><span>Search window</span><strong>[-15, 15]²</strong></div>
+            <div><span>Candidates</span><strong>31 × 31 = 961</strong></div>
+            <div><span>Cathedral G → B</span><strong>(+2, +5)</strong></div>
+            <div><span>Cathedral R → B</span><strong>(+3, +12)</strong></div>
+          </div>
+
+          <h3>Overlap, rather than wrap</h3>
+          <p>For candidate <code>(dx, dy)</code>, the comparison pairs <code>reference[y, x]</code> with <code>moving[y − dy, x − dx]</code>. The common valid region is sliced instead of using a circular roll, so pixels leaving one side never reappear on the other. <code>10%</code> of each overlap edge is then ignored while scoring to prevent the physical plate border from dominating the match.</p>
+
+          <div class="score-crop-demo" aria-label="Diagram showing the central region used for alignment scoring">
+            <div class="score-window"><div><b>Scored pixels</b><span>central 80% × 80%</span></div></div>
+            <div>
+              <p class="mini-label">SCORE_CROP = 0.10</p>
+              <h3>Score only the center.</h3>
+              <p>After finding the valid overlap, 10% is trimmed from its top, bottom, left, and right. NCC or L2 therefore sees the central 80% in each dimension—about 64% of the overlap pixels—and ignores the unstable glass-plate frame.</p>
+            </div>
+          </div>
+
+          <h3>Algorithm</h3>
+          <pre class="code-block" data-label="Python · exhaustive search"><code><span class="tok-keyword">for</span> dy <span class="tok-keyword">in</span> <span class="tok-func">range</span>(center_y <span class="tok-op">-</span> radius, center_y <span class="tok-op">+</span> radius <span class="tok-op">+</span> <span class="tok-number">1</span>):
+    <span class="tok-keyword">for</span> dx <span class="tok-keyword">in</span> <span class="tok-func">range</span>(center_x <span class="tok-op">-</span> radius, center_x <span class="tok-op">+</span> radius <span class="tok-op">+</span> <span class="tok-number">1</span>):
+        ref_patch, mov_patch <span class="tok-op">=</span> <span class="tok-func">overlap</span>(reference, moving, (dx, dy))
+        score <span class="tok-op">=</span> <span class="tok-func">metric</span>(ref_patch, mov_patch)
+            
+        <span class="tok-keyword">if</span> score <span class="tok-op">&lt;</span> best_score:
+            best_score <span class="tok-op">=</span> score
+            best_shift <span class="tok-op">=</span> (dx, dy)</code></pre>
+
+          <h3>Comparison</h3>
+          <div class="compare-shell wide-block" data-compare style="--position: 48%">
+            <div class="compare-frame">
+              <img src="web_assets/cathedral-unaligned.jpg" alt="Cathedral channels before alignment">
+              <div class="compare-after"><img src="web_assets/cathedral-aligned.jpg" alt="Cathedral channels after alignment"></div>
+              <div class="compare-line" aria-hidden="true"><span>↔</span></div>
+              <span class="compare-label before">Aligned</span>
+              <span class="compare-label after">Unaligned</span>
+              <input type="range" min="0" max="100" value="48" aria-label="Compare unaligned and aligned Cathedral images">
+            </div>
+            <p>Drag to inspect the roof, tower, and horizon. Colored fringes collapse when the three channel edges occupy the same coordinates.</p>
+          </div>
+        </section>
+
+        <section class="story-section" id="metrics" data-section>
+          <p class="section-index">03 / MATCHING METRICS</p>
+          <h2>L2 measures values &<br>NCC measures pattern.</h2>
+
+          <div class="metric-cards">
+            <article>
+              <span class="metric-tag">LOWER IS BETTER</span>
+              <h3>L2 / Mean Squared Error</h3>
+              <p class="formula">mean((A − B)²)</p>
+              <p>L2 directly penalizes pixel differences. It is simple and fast, but a global brightness or contrast change creates a large error even when structures line up.</p>
+            </article>
+            <article>
+              <span class="metric-tag">HIGHER IS BETTER</span>
+              <h3>Normalized Cross-Correlation</h3>
+              <p class="formula">(A−μA)·(B−μB) / ‖A−μA‖‖B−μB‖</p>
+              <p>NCC removes each patch mean and normalizes its magnitude. It compares the direction of variation, making it much less sensitive to exposure differences.</p>
+            </article>
+          </div>
+
+          <div class="example-strip">
+            <code>A = [1, 2, 3]</code>
+            <code>B = [11, 12, 13]</code>
+            <span>L2 is large</span>
+            <span>NCC = 1</span>
+          </div>
+
+          <h3>Comparison</h3>
+          <div class="metric-explorer wide-block">
+            <div class="metric-tabs" role="tablist" aria-label="Score heatmap metric">
+              <button class="active" type="button" role="tab" aria-selected="true" data-image="web_assets/heatmap-ncc.png" data-name="NCC" data-copy="Brighter cells have greater normalized correlation. The red outline marks the maximum at (+2, +5).">NCC</button>
+              <button type="button" role="tab" aria-selected="false" data-image="web_assets/heatmap-l2.png" data-name="L2" data-copy="Brighter cells have lower mean squared error. On Cathedral, L2 also selects (+2, +5).">L2</button>
+            </div>
+            <div class="heatmap-panel">
+              <img id="metricHeatmap" src="web_assets/heatmap-ncc.png" alt="NCC score heatmap over a 31 by 31 displacement window">
+              <div>
+                <p class="mini-label">SCORE LANDSCAPE · GREEN TO BLUE</p>
+                <h3 id="metricName">NCC</h3>
+                <p id="metricCopy">Brighter cells have greater normalized correlation. The red outline marks the maximum at (+2, +5).</p>
+                <dl>
+                  <div><dt>dx</dt><dd>+2 px</dd></div>
+                  <div><dt>dy</dt><dd>+5 px</dd></div>
+                  <div><dt>Window</dt><dd>31 × 31</dd></div>
+                </dl>
+              </div>
+            </div>
+          </div>
+
+          <div class="note">
+            <strong>Edge NCC, better mapping.</strong>
+            Color channels can reverse or substantially change object brightness—especially on the Emir's blue robe. Thus gradient magnitude <code>√(dx² + dy²)</code> is condidered as an invariant feature, with NCC applied to those structural edges. Raw NCC and L2 remain available from the command line.
+          </div>
+        </section>
+
+        <section class="story-section" id="pyramid" data-section>
+          <p class="section-index">04 / MULTI-SCALE PYRAMID</p>
+          <h2>Pyramid Alignment.</h2>
+          <p class="lead">A full-resolution TIFF may require a displacement greater than one hundred pixels. Expanding exhaustive search over the original image would multiply both the number of candidates and the cost of every comparison. The pyramid moves the broad search to a tiny image.</p>
+
+          <div class="complexity-callout">
+            <div><span>Naive large window</span><strong>241²</strong><small>58,081 full-resolution comparisons</small></div>
+            <div class="versus">VS</div>
+            <div><span>Pyramid</span><strong>31² + 4·7²</strong><small>one coarse search, four local refinements</small></div>
+          </div>
+
+          <h3>Building each level</h3>
+          <p>Before taking every second row and column, the separable binomial kernel <code>[1, 4, 6, 4, 1] / 16</code> is applied horizontally and vertically. This approximates Gaussian blur and suppresses high frequencies that would otherwise alias during decimation.</p>
+          <!-- <div class="note threshold-note"><strong>Why does 400 produce a 201-pixel level?</strong> Here <code>min_size=400</code> is a stopping threshold, not a hard lower bound. The 402-pixel level is still larger than 400, so it is downsampled once more to 201; the pyramid then stops. That extra level keeps large shifts inside the ±15 coarse search window.</div> -->
+
+          <div class="pyramid wide-block" aria-label="Five levels of the Emir blue channel pyramid shown at proportional display sizes">
+            <figure class="level l4"><img src="web_assets/pyramid-emir-4.jpg" alt="Emir pyramid at one sixteenth resolution"><figcaption><b>1/16</b><span>201 × 232</span></figcaption></figure>
+            <i>→</i>
+            <figure class="level l3"><img src="web_assets/pyramid-emir-3.jpg" alt="Emir pyramid at one eighth resolution"><figcaption><b>1/8</b><span>402 × 463</span></figcaption></figure>
+            <i>→</i>
+            <figure class="level l2"><img src="web_assets/pyramid-emir-2.jpg" alt="Emir pyramid at one quarter resolution"><figcaption><b>1/4</b><span>803 × 926</span></figcaption></figure>
+            <i>→</i>
+            <figure class="level l1"><img src="web_assets/pyramid-emir-1.jpg" alt="Emir pyramid at one half resolution"><figcaption><b>1/2</b><span>1605 × 1851</span></figcaption></figure>
+            <i>→</i>
+            <figure class="level l0"><img src="web_assets/pyramid-emir-0.jpg" alt="Emir pyramid at full resolution"><figcaption><b>Full</b><span>3209 × 3702</span></figcaption></figure>
+          </div>
+          <!-- <p class="pyramid-dimensions">Actual arrays · 1/16: 201 × 232 · 1/8: 402 × 463 · 1/4: 803 × 926 · 1/2: 1605 × 1851 · Full: 3209 × 3702</p> -->
+
+          <h3>Coarse-to-fine search</h3>
+          <p>At the coarsest 1/16 level, the original red displacement <code>(40,107)</code> becomes about <code>(2,7)</code>, safely inside a <code>±15</code>(search_radius) window. At every finer level, the previous estimate is doubled and refined <code>±3</code>(refine_radius) around that prediction.</p>
+
+          <div class="table-wrap wide-block">
+            <table>
+              <thead><tr><th>Level</th><th>Search center</th><th>Radius</th><th>Best R → B</th></tr></thead>
+              <tbody>
+                <tr><td>1/16</td><td>(0, 0)</td><td>±15</td><td><b>(2, 7)</b></td></tr>
+                <tr><td>1/8</td><td>(4, 14)</td><td>±3</td><td><b>(5, 13)</b></td></tr>
+                <tr><td>1/4</td><td>(10, 26)</td><td>±3</td><td><b>(10, 27)</b></td></tr>
+                <tr><td>1/2</td><td>(20, 54)</td><td>±3</td><td><b>(20, 53)</b></td></tr>
+                <tr><td>Full</td><td>(40, 106)</td><td>±3</td><td><b>(40, 107)</b></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Algorithm</h3>
+          <pre class="code-block" data-label="Python · coarse-to-fine refinement"><code>estimate <span class="tok-op">=</span> (<span class="tok-number">0</span>, <span class="tok-number">0</span>)
+<span class="tok-keyword">for</span> level <span class="tok-keyword">in</span> <span class="tok-func">coarse_to_fine</span>(pyramid):
+    <span class="tok-keyword">if</span> level <span class="tok-keyword">is not</span> coarsest:
+        estimate <span class="tok-op">=</span> <span class="tok-number">2</span> <span class="tok-op">*</span> estimate
+
+    estimate <span class="tok-op">=</span> <span class="tok-func">search</span>(
+        center<span class="tok-op">=</span>estimate,
+        radius<span class="tok-op">=</span><span class="tok-number">15</span> <span class="tok-keyword">if</span> coarsest <span class="tok-keyword">else</span> <span class="tok-number">3</span>,
+    )</code></pre>
+        </section>
+
+        <section class="story-section" id="cropping" data-section>
+          <p class="section-index">05 / AUTOMATIC CROPPING</p>
+          <h2>Detect the frame.</h2>
+          <p>The three translated channels first intersect at their common valid region. I then measure color discontinuities between adjacent rows and columns, reduce each boundary to a robust <code>90th-percentile</code> strength, and search only the outer <code>12%</code> of the image. A candidate must be unusual relative to ordinary interior edges and connected to the dominant border neighborhood. Finally, the innermost qualifying edge is selected, followed by a small inward buffer.</p>
+          <p>This removes black, white, and multi-color plate bands without blindly discarding the same percentage from every photograph.</p>
+
+          <h3>Comparison</h3>
+          <div class="crop-pair wide-block">
+            <figure><img src="web_assets/emir-before-crop.jpg" alt="Aligned Emir image before automatic cropping" loading="lazy"><figcaption><b>Before detection</b><span>Residual black and colored plate bands</span></figcaption></figure>
+            <figure><img src="web_assets/emir-after-crop.jpg" alt="Emir image after automatic cropping" loading="lazy"><figcaption><b>After detection</b><span>Each side receives a data-dependent crop</span></figcaption></figure>
+          </div>
+        </section>
+      </article>
+    </div>
+
+    <section class="gallery-section" id="gallery" data-section>
+      <div class="gallery-heading">
+        <div><p class="section-index">06 / GALLERY</p><h2>Fourteen recovered views.</h2></div>
+        <p>All offsets are translations applied to green or red to align with the fixed blue channel. Select any image to inspect it at a larger scale.</p>
+      </div>
+
+      <div class="gallery-grid">
+        <button class="gallery-card" data-title="Cathedral" data-meta="G (+2,+5) · R (+3,+12)" data-full="web_assets/gallery/cathedral.jpg"><img src="web_assets/gallery/cathedral.jpg" alt="Colorized Cathedral" loading="lazy"><span><b>Cathedral</b><small>G (+2,+5) · R (+3,+12)</small></span></button>
+        <button class="gallery-card" data-title="Church" data-meta="G (+4,+25) · R (-4,+58)" data-full="web_assets/gallery/church.jpg"><img src="web_assets/gallery/church.jpg" alt="Colorized Church" loading="lazy"><span><b>Church</b><small>G (+4,+25) · R (-4,+58)</small></span></button>
+        <button class="gallery-card feature" data-title="Emir" data-meta="G (+24,+49) · R (+40,+107)" data-full="web_assets/gallery/emir.jpg"><img src="web_assets/gallery/emir.jpg" alt="Colorized Emir" loading="lazy"><span><b>Emir</b><small>G (+24,+49) · R (+40,+107)</small></span></button>
+        <button class="gallery-card" data-title="Harvesters" data-meta="G (+17,+60) · R (+14,+124)" data-full="web_assets/gallery/harvesters.jpg"><img src="web_assets/gallery/harvesters.jpg" alt="Colorized Harvesters" loading="lazy"><span><b>Harvesters</b><small>G (+17,+60) · R (+14,+124)</small></span></button>
+        <button class="gallery-card" data-title="Icon" data-meta="G (+17,+42) · R (+23,+90)" data-full="web_assets/gallery/icon.jpg"><img src="web_assets/gallery/icon.jpg" alt="Colorized Icon" loading="lazy"><span><b>Icon</b><small>G (+17,+42) · R (+23,+90)</small></span></button>
+        <button class="gallery-card" data-title="Ilemselga" data-meta="G (+7,+40) · R (+11,+131)" data-full="web_assets/gallery/ilemselga.jpg"><img src="web_assets/gallery/ilemselga.jpg" alt="Colorized Ilemselga" loading="lazy"><span><b>Ilemselga</b><small>G (+7,+40) · R (+11,+131)</small></span></button>
+        <button class="gallery-card feature" data-title="Melons" data-meta="G (+10,+80) · R (+13,+177)" data-full="web_assets/gallery/melons.jpg"><img src="web_assets/gallery/melons.jpg" alt="Colorized Melons" loading="lazy"><span><b>Melons</b><small>G (+10,+80) · R (+13,+177)</small></span></button>
+        <button class="gallery-card" data-title="Monastery" data-meta="G (+2,-3) · R (+2,+3)" data-full="web_assets/gallery/monastery.jpg"><img src="web_assets/gallery/monastery.jpg" alt="Colorized Monastery" loading="lazy"><span><b>Monastery</b><small>G (+2,-3) · R (+2,+3)</small></span></button>
+        <button class="gallery-card" data-title="Religious Painting" data-meta="G (+5,+30) · R (+6,+70)" data-full="web_assets/gallery/religous_painting.jpg"><img src="web_assets/gallery/religous_painting.jpg" alt="Colorized Religious Painting" loading="lazy"><span><b>Religious Painting</b><small>G (+5,+30) · R (+6,+70)</small></span></button>
+        <button class="gallery-card" data-title="Self Portrait" data-meta="G (+29,+78) · R (+37,+175)" data-full="web_assets/gallery/self_portrait.jpg"><img src="web_assets/gallery/self_portrait.jpg" alt="Colorized Self Portrait" loading="lazy"><span><b>Self Portrait</b><small>G (+29,+78) · R (+37,+175)</small></span></button>
+        <button class="gallery-card" data-title="Siren" data-meta="G (-6,+49) · R (-24,+96)" data-full="web_assets/gallery/siren.jpg"><img src="web_assets/gallery/siren.jpg" alt="Colorized Siren" loading="lazy"><span><b>Siren</b><small>G (-6,+49) · R (-24,+96)</small></span></button>
+        <button class="gallery-card" data-title="Three Generations" data-meta="G (+12,+54) · R (+9,+111)" data-full="web_assets/gallery/three_generations.jpg"><img src="web_assets/gallery/three_generations.jpg" alt="Colorized Three Generations" loading="lazy"><span><b>Three Generations</b><small>G (+12,+54) · R (+9,+111)</small></span></button>
+        <button class="gallery-card" data-title="Tobolsk" data-meta="G (+2,+3) · R (+3,+6)" data-full="web_assets/gallery/tobolsk.jpg"><img src="web_assets/gallery/tobolsk.jpg" alt="Colorized Tobolsk" loading="lazy"><span><b>Tobolsk</b><small>G (+2,+3) · R (+3,+6)</small></span></button>
+        <button class="gallery-card" data-title="Wharf" data-meta="G (-7,+15) · R (-16,+83)" data-full="web_assets/gallery/wharf.jpg"><img src="web_assets/gallery/wharf.jpg" alt="Colorized Wharf" loading="lazy"><span><b>Wharf</b><small>G (-7,+15) · R (-16,+83)</small></span></button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <a href="#top">Back to top ↑</a>
+    <p>CS 180 · Computer Vision and Computational Photography</p>
+  </footer>
+
+  <dialog class="lightbox" id="lightbox">
+    <button class="lightbox-close" type="button" aria-label="Close image">×</button>
+    <img src="" alt="">
+    <div><h2></h2><p></p></div>
+  </dialog>
+</body>
+</html>
