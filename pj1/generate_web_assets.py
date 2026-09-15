@@ -217,6 +217,18 @@ def generate_explanation_assets() -> None:
     cropped_emir = c.crop_borders(raw_emir, mode="auto")
     _save(raw_emir, ASSETS / "emir-before-crop.jpg", max_width=1500)
     _save(cropped_emir, ASSETS / "emir-after-crop.jpg", max_width=1500)
+    _save(
+        cropped_emir,
+        ASSETS / "emir-before-contrast.jpg",
+        max_width=1500,
+        autocontrast=False,
+    )
+    _save(
+        cropped_emir,
+        ASSETS / "emir-after-contrast.jpg",
+        max_width=1500,
+        autocontrast=True,
+    )
     _save(cropped_emir, ASSETS / "hero-emir.jpg", max_width=2200, quality=92)
     print(f"Single-scale heatmaps: NCC {ncc_best}, L2 {l2_best}")
 

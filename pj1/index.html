@@ -67,7 +67,8 @@
         <a href="#metrics">03 · NCC vs L2</a>
         <a href="#pyramid">04 · Pyramid</a>
         <a href="#cropping">05 · Cropping</a>
-        <a href="#gallery">06 · Gallery</a>
+        <a href="#color-enhancement">06 · Color enhancement</a>
+        <a href="#gallery">07 · Gallery</a>
       </aside>
 
       <article class="article">
@@ -295,12 +296,23 @@
             <figure><img src="web_assets/emir-after-crop.jpg" alt="Emir image after automatic cropping" loading="lazy"><figcaption><b>After detection</b><span>Each side receives a data-dependent crop</span></figcaption></figure>
           </div>
         </section>
+
+        <section class="story-section" id="color-enhancement" data-section>
+          <p class="section-index">06 / COLOR ENHANCEMENT</p>
+          <h2>Final contrast stretch.</h2>
+          <p>For the displayed results, the greyscale value expansion is conducted after alignment by mapping each output channel's <code>1st</code> and <code>99th</code> percentiles to the visible range. Values outside that interval are clipped.<br>This is a presentation-only step: the <code>NCC/L2</code> alignment scores are still computed from the original normalized channel data.</p>
+
+          <div class="contrast-pair wide-block">
+            <figure><img src="web_assets/emir-before-contrast.jpg" alt="Cropped Emir image before contrast enhancement" loading="lazy"><figcaption><b>Before enhancement</b><span>Original normalized intensity range</span></figcaption></figure>
+            <figure><img src="web_assets/emir-after-contrast.jpg" alt="Cropped Emir image after percentile contrast enhancement" loading="lazy"><figcaption><b>After enhancement</b><span>Per-channel P1–P99 stretch</span></figcaption></figure>
+          </div>
+        </section>
       </article>
     </div>
 
     <section class="gallery-section" id="gallery" data-section>
       <div class="gallery-heading">
-        <div><p class="section-index">06 / GALLERY</p><h2>Fourteen recovered views.</h2></div>
+        <div><p class="section-index">07 / GALLERY</p><h2>Fourteen recovered views.</h2></div>
         <p>All offsets are translations applied to green or red to align with the fixed blue channel. Select any image to inspect it at a larger scale.</p>
       </div>
 

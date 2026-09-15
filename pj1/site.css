@@ -315,9 +315,9 @@ code, pre, .section-index, .eyebrow, .metric-tag, dt, dd, small {
 code { padding: .1em .3em; color: #78d9e0; background: rgba(46,184,198,.1); border-radius: 3px; font-size: .86em; }
 
 .plate-layout { display: grid; grid-template-columns: minmax(260px, .72fr) 1.28fr; gap: 18px; margin-top: 55px; }
-.plate-figure, .channel, .crop-pair figure { margin: 0; background: var(--night); }
+.plate-figure, .channel, .crop-pair figure, .contrast-pair figure { margin: 0; background: var(--night); }
 .plate-figure img { width: 100%; height: 540px; object-fit: contain; background: #05090c; }
-.plate-figure figcaption, .channel figcaption, .crop-pair figcaption {
+.plate-figure figcaption, .channel figcaption, .crop-pair figcaption, .contrast-pair figcaption {
   display: flex;
   justify-content: space-between;
   gap: 15px;
@@ -325,7 +325,7 @@ code { padding: .1em .3em; color: #78d9e0; background: rgba(46,184,198,.1); bord
   color: white;
   font-size: .7rem;
 }
-.plate-figure figcaption span, .crop-pair figcaption span { color: #8c9ca4; }
+.plate-figure figcaption span, .crop-pair figcaption span, .contrast-pair figcaption span { color: #8c9ca4; }
 .channel-stack { display: grid; grid-template-rows: repeat(3, 1fr); gap: 18px; }
 .channel { display: grid; grid-template-columns: minmax(0, 1fr) 160px; min-height: 0; }
 .channel img { width: 100%; height: 100%; min-height: 0; object-fit: cover; filter: grayscale(1); }
@@ -451,9 +451,9 @@ th { color: #728087; font: 700 .58rem "SFMono-Regular", Consolas, monospace; tex
 td { font: 500 .75rem "SFMono-Regular", Consolas, monospace; }
 td b { color: var(--cyan-dark); }
 
-.crop-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 50px; }
-.crop-pair figure { overflow: hidden; }
-.crop-pair img { width: 100%; aspect-ratio: 1.12 / 1; object-fit: cover; }
+.crop-pair, .contrast-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 50px; }
+.crop-pair figure, .contrast-pair figure { overflow: hidden; }
+.crop-pair img, .contrast-pair img { width: 100%; aspect-ratio: 1.12 / 1; object-fit: cover; }
 
 .gallery-section { scroll-margin-top: calc(var(--header) + 30px); padding: 120px max(26px, 5vw) 90px; color: white; background: var(--night); }
 .gallery-heading { display: grid; grid-template-columns: 1.3fr .7fr; align-items: end; gap: 60px; max-width: 1420px; margin: 0 auto 55px; }
@@ -534,7 +534,7 @@ footer a { color: white; }
   .channel { display: block; }
   .channel img { height: 143px; }
   .channel figcaption { min-height: 86px; }
-  .metric-cards, .crop-pair { grid-template-columns: 1fr; }
+  .metric-cards, .crop-pair, .contrast-pair { grid-template-columns: 1fr; }
   .metric-cards h3 { white-space: normal; }
   .score-crop-demo { grid-template-columns: 1fr; }
   .heatmap-panel { grid-template-columns: 1fr; gap: 10px; }
