@@ -2,5 +2,5 @@ __pycache__/
 outputs/
 CS180_fa2026_proj1_data/*.jpg
 CS180_fa2026_proj1_data/*.tif
-README.md
+# README.md
 test_colorize.py
