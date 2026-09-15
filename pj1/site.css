@@ -233,6 +233,17 @@ code, pre, .section-index, .eyebrow, .metric-tag, dt, dd, small {
   text-transform: uppercase;
 }
 .read-link span { color: var(--cyan); }
+.hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px 28px; margin-top: 30px; }
+.hero-actions .read-link { margin-top: 0; }
+.gallery-link {
+  padding: 11px 15px;
+  color: var(--night);
+  border: 1px solid var(--cyan);
+  background: var(--cyan);
+}
+.gallery-link span { color: var(--night); }
+.gallery-link:hover { color: white; background: transparent; }
+.gallery-link:hover span { color: var(--cyan); }
 .hero-caption {
   position: absolute;
   z-index: 2;
