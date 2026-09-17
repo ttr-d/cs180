@@ -68,7 +68,8 @@
         <a href="#pyramid">04 · Pyramid</a>
         <a href="#cropping">05 · Cropping</a>
         <a href="#color-enhancement">06 · Color enhancement</a>
-        <a href="#gallery">07 · Gallery</a>
+        <a href="#bells">07 · Bells &amp; whistles</a>
+        <a href="#gallery">08 · Gallery</a>
       </aside>
 
       <article class="article">
@@ -94,7 +95,7 @@
         </section>
 
         <section class="story-section" id="plate" data-section>
-          <p class="section-index">01 / THE GLASS PLATE</p>
+          <p class="section-index">01 / THE PLATE</p>
           <h2>Splitting the scan.</h2>
           <p>The input is a two-dimensional grayscale array of shape <code>(3H, W)</code>, not an ordinary <code>(H, W, 3)</code> color image. The filter order is blue, green, red. Any remainder below three equal sections is discarded.</p>
 
@@ -173,10 +174,18 @@
             </div>
             <p>Drag to inspect the roof, tower, and horizon. Colored fringes collapse when the three channel edges occupy the same coordinates.</p>
           </div>
+
+          <h3>Low-resolution JPEG results</h3>
+          <p>All three provided JPEGs are aligned with the single-scale exhaustive search and raw-pixel NCC. L2 is implemented as an alternative and produces the same Cathedral green-channel optimum shown in the metric comparison below.</p>
+          <div class="result-grid wide-block">
+            <figure><img src="web_assets/single-scale/cathedral.jpg" alt="Single-scale NCC result for Cathedral" loading="lazy"><figcaption><b>Cathedral</b><span>G (+2,+5) · R (+3,+12)</span></figcaption></figure>
+            <figure><img src="web_assets/single-scale/monastery.jpg" alt="Single-scale NCC result for Monastery" loading="lazy"><figcaption><b>Monastery</b><span>G (+2,-3) · R (+2,+3)</span></figcaption></figure>
+            <figure><img src="web_assets/single-scale/tobolsk.jpg" alt="Single-scale NCC result for Tobolsk" loading="lazy"><figcaption><b>Tobolsk</b><span>G (+3,+3) · R (+3,+6)</span></figcaption></figure>
+          </div>
         </section>
 
         <section class="story-section" id="metrics" data-section>
-          <p class="section-index">03 / MATCHING METRICS</p>
+          <p class="section-index">03 / METRICS COMPARSION </p>
           <h2>L2 measures values &<br>NCC measures pattern.</h2>
 
           <div class="metric-cards">
@@ -282,10 +291,35 @@
         center<span class="tok-op">=</span>estimate,
         radius<span class="tok-op">=</span><span class="tok-number">15</span> <span class="tok-keyword">if</span> coarsest <span class="tok-keyword">else</span> <span class="tok-number">3</span>,
     )</code></pre>
+
+          <h3>Raw-pixel NCC results on all provided examples</h3>
+          <p>The required baseline below uses the pyramid on the TIFF files and the equivalent one-level search on the JPEG files. Every score is computed directly from the original normalized channel intensities—no edge transform and no contrast enhancement. Offsets are reported as <code>(x, y)</code> translations applied to green and red to match blue.</p>
+          <div class="table-wrap wide-block results-table">
+            <table>
+              <thead><tr><th>Image</th><th>Input</th><th>G → B</th><th>R → B</th></tr></thead>
+              <tbody>
+                <tr><td>Cathedral</td><td>JPEG · 1 level</td><td><b>(+2,+5)</b></td><td><b>(+3,+12)</b></td></tr>
+                <tr><td>Monastery</td><td>JPEG · 1 level</td><td><b>(+2,-3)</b></td><td><b>(+2,+3)</b></td></tr>
+                <tr><td>Tobolsk</td><td>JPEG · 1 level</td><td><b>(+3,+3)</b></td><td><b>(+3,+6)</b></td></tr>
+                <tr><td>Church</td><td>TIFF · pyramid</td><td><b>(+4,+25)</b></td><td><b>(-4,+58)</b></td></tr>
+                <tr class="baseline-exception"><td>Emir</td><td>TIFF · pyramid</td><td><b>(+24,+49)</b></td><td><b>(-281,+125)</b> *</td></tr>
+                <tr><td>Harvesters</td><td>TIFF · pyramid</td><td><b>(+17,+60)</b></td><td><b>(+13,+124)</b></td></tr>
+                <tr><td>Icon</td><td>TIFF · pyramid</td><td><b>(+17,+41)</b></td><td><b>(+23,+89)</b></td></tr>
+                <tr><td>Ilemselga</td><td>TIFF · pyramid</td><td><b>(+7,+40)</b></td><td><b>(+11,+130)</b></td></tr>
+                <tr><td>Melons</td><td>TIFF · pyramid</td><td><b>(+11,+82)</b></td><td><b>(+13,+178)</b></td></tr>
+                <tr><td>Religious Painting</td><td>TIFF · pyramid</td><td><b>(+3,+28)</b></td><td><b>(+7,+68)</b></td></tr>
+                <tr><td>Self Portrait</td><td>TIFF · pyramid</td><td><b>(+29,+79)</b></td><td><b>(+37,+176)</b></td></tr>
+                <tr><td>Siren</td><td>TIFF · pyramid</td><td><b>(-6,+49)</b></td><td><b>(-25,+96)</b></td></tr>
+                <tr><td>Three Generations</td><td>TIFF · pyramid</td><td><b>(+14,+53)</b></td><td><b>(+11,+112)</b></td></tr>
+                <tr><td>Wharf</td><td>TIFF · pyramid</td><td><b>(-7,+15)</b></td><td><b>(-16,+83)</b></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="table-note">* Raw NCC fails on Emir because the blue robe has radically different intensity across filters. This is the one baseline failure; the Edge-NCC extension below corrects it.</p>
         </section>
 
         <section class="story-section" id="cropping" data-section>
-          <p class="section-index">05 / AUTOMATIC CROPPING</p>
+          <p class="section-index">05 / CROPPING</p>
           <h2>Detect the frame.</h2>
           <p>The three translated channels first intersect at their common valid region. I then measure color discontinuities between adjacent rows and columns, reduce each boundary to a robust <code>90th-percentile</code> strength, and search only the outer <code>12%</code> of the image. A candidate must be unusual relative to ordinary interior edges and connected to the dominant border neighborhood. Finally, the innermost qualifying edge is selected, followed by a small inward buffer.</p>
           <p>This removes black, white, and multi-color plate bands without blindly discarding the same percentage from every photograph.</p>
@@ -308,13 +342,32 @@
             <figure><img src="web_assets/emir-after-contrast.jpg" alt="Cropped Emir image after percentile contrast enhancement" loading="lazy"><figcaption><b>After enhancement</b><span>Per-channel P1–P99 stretch</span></figcaption></figure>
           </div>
         </section>
+
+        <section class="story-section" id="bells" data-section>
+          <p class="section-index">07 / BELLS &amp; WHISTLES</p>
+          <h2>Refining.</h2>
+          <p class="lead">Three extensions improve the baseline: Edge-NCC alignment, automatic border detection, contrast stretching.</p>
+
+          <h3>Edge-NCC fixes the difficult Emir plate</h3>
+          <p>Raw-pixel NCC incorrectly sends the red channel to <code>(-281,+125)</code>. Using gradient magnitude as the feature preserves structural boundaries even when materials appear bright in one filter and dark in another. The corrected red offset is <code>(+40,+107)</code>.</p>
+          <div class="bells-pair wide-block">
+            <figure><img src="web_assets/bells/emir-raw-ncc.jpg" alt="Emir incorrectly aligned using raw-pixel NCC" loading="lazy"><figcaption><b>Before · Raw NCC</b><span>R (-281,+125) · misaligned</span></figcaption></figure>
+            <figure><img src="web_assets/bells/emir-edge-ncc.jpg" alt="Emir correctly aligned using Edge-NCC" loading="lazy"><figcaption><b>After · Edge-NCC</b><span>R (+40,+107) · aligned</span></figcaption></figure>
+          </div>
+
+          <div class="extension-list wide-block">
+            <a href="#cropping"><span>Automatic cropping</span><small>Detected borders · before/after in Section 05</small></a>
+            <a href="#color-enhancement"><span>Color enhancement</span><small>P1–P99 contrast stretch · before/after in Section 06</small></a>
+          </div>
+        </section>
+
       </article>
     </div>
 
     <section class="gallery-section" id="gallery" data-section>
       <div class="gallery-heading">
-        <div><p class="section-index">07 / GALLERY</p><h2>Fourteen recovered views.</h2></div>
-        <p>All offsets are translations applied to green or red to align with the fixed blue channel. Select any image to inspect it at a larger scale.</p>
+        <div><p class="section-index">08 / GALLERY</p><h2>Recovered views.</h2></div>
+        <p>Final results use Edge-NCC, automatic cropping, and contrast enhancement. All offsets translate green or red to the fixed blue channel. Select any image to inspect it at a larger scale.</p>
       </div>
 
       <div class="gallery-grid">
@@ -332,6 +385,17 @@
         <button class="gallery-card" data-title="Three Generations" data-meta="G (+12,+54) · R (+9,+111)" data-full="web_assets/gallery/three_generations.jpg"><img src="web_assets/gallery/three_generations.jpg" alt="Colorized Three Generations" loading="lazy"><span><b>Three Generations</b><small>G (+12,+54) · R (+9,+111)</small></span></button>
         <button class="gallery-card" data-title="Tobolsk" data-meta="G (+2,+3) · R (+3,+6)" data-full="web_assets/gallery/tobolsk.jpg"><img src="web_assets/gallery/tobolsk.jpg" alt="Colorized Tobolsk" loading="lazy"><span><b>Tobolsk</b><small>G (+2,+3) · R (+3,+6)</small></span></button>
         <button class="gallery-card" data-title="Wharf" data-meta="G (-7,+15) · R (-16,+83)" data-full="web_assets/gallery/wharf.jpg"><img src="web_assets/gallery/wharf.jpg" alt="Colorized Wharf" loading="lazy"><span><b>Wharf</b><small>G (-7,+15) · R (-16,+83)</small></span></button>
+      </div>
+
+      <div class="gallery-heading collection-heading">
+        <div><h2>More plates.</h2></div>
+        <!-- <p>The same raw-pixel NCC pyramid was applied without image-specific tuning to three additional full-resolution scans.</p> -->
+      </div>
+
+      <div class="gallery-grid collection-grid">
+        <button class="gallery-card" data-title="Murals" data-meta="G (+8,+72) · R (-26,+159)" data-full="web_assets/custom/00100-00191a.jpg"><img src="web_assets/custom/00100-00191a.jpg" alt="Colorized Prokudin-Gorskii photograph of murals" loading="lazy"><span><b>Murals</b><small>G (+8,+72) · R (-26,+159)</small></span></button>
+        <button class="gallery-card" data-title="River" data-meta="G (+5,+63) · R (-3,+142)" data-full="web_assets/custom/00500-00578a.jpg"><img src="web_assets/custom/00500-00578a.jpg" alt="Colorized Prokudin-Gorskii photograph of a river" loading="lazy"><span><b>River</b><small>G (+5,+63) · R (-3,+142)</small></span></button>
+        <button class="gallery-card" data-title="Kirgizy" data-meta="G (+30,+99) · R (+49,+199)" data-full="web_assets/custom/01800-01854a.jpg"><img src="web_assets/custom/01800-01854a.jpg" alt="Colorized Prokudin-Gorskii photograph of Kirgizy people" loading="lazy"><span><b>Kirgizy</b><small>G (+30,+99) · R (+49,+199)</small></span></button>
       </div>
     </section>
   </main>

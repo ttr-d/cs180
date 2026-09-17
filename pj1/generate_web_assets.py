@@ -32,6 +32,30 @@ SHIFTS: dict[str, tuple[c.Shift, c.Shift]] = {
     "wharf": ((-7, 15), (-16, 83)),
 }
 
+# Required baseline: pyramid alignment scored directly on channel intensities.
+RAW_NCC_SHIFTS: dict[str, tuple[c.Shift, c.Shift]] = {
+    "cathedral": ((2, 5), (3, 12)),
+    "church": ((4, 25), (-4, 58)),
+    "emir": ((24, 49), (-281, 125)),
+    "harvesters": ((17, 60), (13, 124)),
+    "icon": ((17, 41), (23, 89)),
+    "ilemselga": ((7, 40), (11, 130)),
+    "melons": ((11, 82), (13, 178)),
+    "monastery": ((2, -3), (2, 3)),
+    "religous_painting": ((3, 28), (7, 68)),
+    "self_portrait": ((29, 79), (37, 176)),
+    "siren": ((-6, 49), (-25, 96)),
+    "three_generations": ((14, 53), (11, 112)),
+    "tobolsk": ((3, 3), (3, 6)),
+    "wharf": ((-7, 15), (-16, 83)),
+}
+
+CUSTOM_NCC_SHIFTS: dict[str, tuple[c.Shift, c.Shift]] = {
+    "master-pnp-prok-00100-00191a": ((8, 72), (-26, 159)),
+    "master-pnp-prok-00500-00578a": ((5, 63), (-3, 142)),
+    "master-pnp-prok-01800-01854a": ((30, 99), (49, 199)),
+}
+
 
 def _display_array(array: np.ndarray, autocontrast: bool = True) -> np.ndarray:
     result = np.asarray(array, dtype=np.float32).copy()
@@ -72,6 +96,42 @@ def _copy_for_web(source: Path, destination: Path, max_width: int = 1500) -> Non
             image = image.resize((max_width, height), Image.Resampling.LANCZOS)
         destination.parent.mkdir(parents=True, exist_ok=True)
         image.save(destination, quality=88, optimize=True, progressive=True)
+
+
+def _raw_ncc_output(stem: str) -> Path:
+    """Return a reproducible raw-pixel NCC result, generating it if needed."""
+    output = OUTPUTS / "ncc" / f"{stem}_color.jpg"
+    if output.exists():
+        return output
+    matches = list(DATA.glob(f"{stem}.*"))
+    if not matches:
+        raise FileNotFoundError(f"No source scan found for {stem}")
+    c.colorize(
+        matches[0],
+        output,
+        method="pyramid",
+        metric="ncc",
+        autocontrast=True,
+    )
+    return output
+
+
+def _single_ncc_output(stem: str) -> Path:
+    """Return an explicitly single-scale NCC result for a low-res scan."""
+    output = OUTPUTS / "single-ncc" / f"{stem}_color.jpg"
+    if output.exists():
+        return output
+    matches = list(DATA.glob(f"{stem}.*"))
+    if not matches:
+        raise FileNotFoundError(f"No source scan found for {stem}")
+    c.colorize(
+        matches[0],
+        output,
+        method="single",
+        metric="ncc",
+        autocontrast=True,
+    )
+    return output
 
 
 def _common_alignment_views(
@@ -246,9 +306,33 @@ def generate_gallery() -> None:
         print(f"Gallery: {stem:20s} G={shifts[0]} R={shifts[1]}")
 
 
+def generate_assignment_results() -> None:
+    """Create the explicit baseline, extension, and own-example evidence."""
+    for stem in ("cathedral", "monastery", "tobolsk"):
+        _copy_for_web(
+            _single_ncc_output(stem), ASSETS / "single-scale" / f"{stem}.jpg", 900
+        )
+
+    _copy_for_web(
+        _raw_ncc_output("emir"), ASSETS / "bells" / "emir-raw-ncc.jpg"
+    )
+    _copy_for_web(
+        ASSETS / "gallery" / "emir.jpg",
+        ASSETS / "bells" / "emir-edge-ncc.jpg",
+    )
+
+    for stem, shifts in CUSTOM_NCC_SHIFTS.items():
+        short_name = stem.removeprefix("master-pnp-prok-")
+        _copy_for_web(
+            _raw_ncc_output(stem), ASSETS / "custom" / f"{short_name}.jpg"
+        )
+        print(f"Own example: {short_name:16s} G={shifts[0]} R={shifts[1]}")
+
+
 def main() -> None:
     generate_explanation_assets()
     generate_gallery()
+    generate_assignment_results()
 
 
 if __name__ == "__main__":
