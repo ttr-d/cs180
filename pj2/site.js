@@ -48,6 +48,18 @@ document.querySelectorAll('[data-compare]').forEach((comparison) => {
   update();
 });
 
+document.querySelectorAll('[data-distance]').forEach((control) => {
+  const slider = control.querySelector('input[type="range"]');
+  const update = () => {
+    const progress = Number(slider.value) / Number(slider.max);
+    const size = 86 - progress * 70;
+    control.style.setProperty('--distance-size', `${size}%`);
+    slider.setAttribute('aria-valuetext', `${Math.round(progress * 100)}% toward far view`);
+  };
+  slider.addEventListener('input', update);
+  update();
+});
+
 const thresholdButtons = [...document.querySelectorAll('.threshold-switcher button')];
 const thresholdImage = document.getElementById('thresholdImage');
 const thresholdFormula = document.getElementById('thresholdFormula');
@@ -97,6 +109,8 @@ fetch('web_assets/metrics.json')
     const scientificKeys = new Set([
       'four_loop_same_error', 'two_loop_same_error', 'four_loop_full_error',
       'two_loop_full_error', 'dog_interior_mae', 'dog_interior_max_error',
+      'unsharp_single_step_max_error',
+      'apple_stack_reconstruction_error', 'orange_stack_reconstruction_error',
     ]);
     document.querySelectorAll('[data-metric]').forEach((element) => {
       const key = element.dataset.metric;
@@ -106,6 +120,10 @@ fetch('web_assets/metrics.json')
         element.textContent = Number(metrics[key]).toFixed(2);
       } else if (key.includes('degrees')) {
         element.textContent = Number(metrics[key]).toFixed(3);
+      } else if (key.endsWith('_mae')) {
+        element.textContent = Number(metrics[key]).toFixed(4);
+      } else if (key.endsWith('_percent')) {
+        element.textContent = Number(metrics[key]).toFixed(2);
       }
     });
   })

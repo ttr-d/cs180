@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="CS 180 Project 2 Part 1: convolution, finite differences, derivative of Gaussian filters, and gradient orientation.">
-  <title>CS 180 · Project 2 · Filters and Edges</title>
+  <meta name="description" content="CS 180 Project 2: convolution, edges, sharpening, and hybrid images built through spatial and frequency filtering.">
+  <title>CS 180 · Project 2 · Filters and Frequencies</title>
   <link rel="stylesheet" href="site.css">
   <script src="site.js" defer></script>
 </head>
@@ -19,7 +19,7 @@
     <nav class="project-nav" aria-label="Project navigation">
       <a href="../index.html">PJ0<small>Camera Geometry</small></a>
       <a href="../pj1/index.html">PJ1<small>Colorizing</small></a>
-      <a class="active" href="index.html" aria-current="page">PJ2<small>Filters &amp; Edges</small></a>
+      <a class="active" href="index.html" aria-current="page">PJ2<small>Filters &amp; Frequencies</small></a>
     </nav>
     <div class="profile-tools">
       <button class="profile-trigger" type="button" aria-label="Open author profile" aria-expanded="false" aria-controls="profilePanel">
@@ -44,15 +44,15 @@
       <img class="hero-image" src="web_assets/orientation/orientation.jpg" alt="Cameraman gradients colored by orientation">
       <div class="hero-shade"></div>
       <div class="hero-copy">
-        <p class="eyebrow">CS 180 · Programming Project 02 · Part 1</p>
-        <h1>Filters<br><em>&amp; Edges</em></h1>
-        <p class="hero-lede">Building convolution from first principles, then using derivatives and Gaussian smoothing to turn pixels into structure.</p>
+        <p class="eyebrow">CS 180 · Programming Project 02 · Parts 1 &amp; 2</p>
+        <h1>Filters<br><em>&amp; Frequencies</em></h1>
+        <p class="hero-lede">Building convolution from first principles, then using spatial frequency to find edges, sharpen detail, and combine perceptions.</p>
         <div class="hero-actions">
           <a class="read-link" href="#part-1-1">Start with convolution <span aria-hidden="true">↓</span></a>
-          <a class="read-link gallery-link" href="#part-1-4">See orientations <span aria-hidden="true">→</span></a>
+          <a class="read-link gallery-link" href="#part-2-2">See hybrid images <span aria-hidden="true">→</span></a>
         </div>
       </div>
-      <p class="hero-caption">Hue = direction · brightness = gradient strength</p>
+      <p class="hero-caption">Spatial gradients meet frequency decomposition</p>
     </section>
 
     <div class="article-layout">
@@ -63,6 +63,12 @@
         <a href="#part-1-3-1">1.3.1 · Gaussian Smoothing</a>
         <a href="#part-1-3-2">1.3.2 · DoG Filters</a>
         <a href="#part-1-4">1.4 · Orientations</a>
+        <p>Part 2</p>
+        <a href="#part-2-1">2.1 · Sharpening</a>
+        <a href="#part-2-2">2.2 · Hybrid Images</a>
+        <a href="#part-2-3">2.3 · Gaussian &amp; Laplacian Stacks</a>
+        <a href="#part-2-4-1">2.4.1 · Multiresolution Blending</a>
+        <a href="#part-2-4-2">2.4.2 · Bells &amp; Whistles</a>
       </aside>
 
       <article class="article">
@@ -167,7 +173,7 @@
           <h3>Boundary handling</h3>
           <p>Zero padding is used because in SciPy <code>boundary="fill"</code> means that every location beyond the image boundary is supplied with one constant value, and <code>fillvalue=0</code> chooses zero as that constant. Together, they make SciPy treat the outside of the image as black, exactly like the NumPy implementation.<br> Matching the same rule makes the correctness comparison meaningful.</p>
           <p>For <code>same</code> mode, only enough zeros are added to preserve the input dimensions; for <code>full</code> mode, <code>kernel_size − 1</code> zeros are added on every side so every partial overlap is represented.</p>
-          <p>Therefore, we can see that there is a bright edge on the top of the y-derivative picture, indicating it's becoming brighter from the padded frame to the picture.</p>
+          <p>The bright line at the top of the y-derivative image indicates a transition from the dark padded boundary into the brighter photograph.</p>
           <!-- <p>This choice is simple and does not invent reflected or repeated image content. Its tradeoff is an artificial transition from the image to black, which appears as a bright frame in derivative results. That border response is therefore a padding artifact, not an edge in the original scene.</p> -->
         </section>
 
@@ -301,7 +307,7 @@ dog_edges = dog_magnitude <span class="tok-op">&gt;=</span> SMOOTH_THRESHOLD</co
           </div>
 
           <h3>Correctness</h3>
-          <p>We now have two ways to calculate the x derivative, we prove that they produce the same result.</p>
+          <p>There are now two paths to the same x derivative; the comparison below verifies that they agree.</p>
           <div class="path-comparison">
             <div><b>Two-pass route</b><span>I → blur with G → differentiate with D<sub>x</sub></span><code>(I ∗ G) ∗ D<sub>x</sub></code></div>
             <div><b>One-pass route</b><span>combine G and D<sub>x</sub> → filter I once</span><code>I ∗ DoG<sub>x</sub></code></div>
@@ -413,13 +419,461 @@ edge_mask = dog_magnitude <span class="tok-op">&gt;=</span> SMOOTH_THRESHOLD
 edge_error = wrapped_error[interior][edge_mask[interior]]</code></pre>
           <p>The retained edge pixels have a mean angular error of <span data-metric="orientation_mean_error_degrees">0.051</span>° and a maximum angular error of <span data-metric="orientation_max_error_degrees">0.086</span>°.</p>
         </section>
+
+        <section class="story-section" id="part-2-1" data-section>
+          <p class="section-index">PART 2.1 / SHARPENING</p>
+          <h2>Give the edges<br>more weight.</h2>
+          <p class="lead">Unsharp masking does not invent new detail. By extracting rapid intensity changes and adding a scaled copy, the image becomes sharper.<br>In this section, I implement such sharpening technology can discuss the resharpening result.</p>
+
+          <h3>Motivation</h3>
+          <p>A Gaussian is a low-pass filter: slowly varying structure survives while fine detail is attenuated. Subtracting that smooth image from the original isolates a high-frequency residual. Strengthening this residual increases local contrast around boundaries—the visual cue interpreted as sharpness.</p>
+
+          <div class="sharpen-equations">
+            <p><span class="roman">L</span> = <span class="roman">G</span><sub>σ</sub> ∗ <span class="roman">I</span></p>
+            <p><span class="roman">H</span> = <span class="roman">I</span> − <span class="roman">L</span></p>
+            <p><span class="roman">I</span><sub>sharp</sub> = <span class="roman">I</span> + α<span class="roman">H</span> = [(1 + α)δ − α<span class="roman">G</span><sub>σ</sub>] ∗ <span class="roman">I</span></p>
+          </div>
+          <p>Here <span class="inline-math">δ</span> is an impulse with a single central value of one, so the unsharp kernel is <span class="inline-math">(1 + α)δ − αG<sub>σ</sub></span>. Its coefficients sum to one, preserving constant regions.</p>
+
+          <h3>Implementation</h3>
+          <pre class="code-block" data-label="Python · one-pass unsharp mask"><code><span class="tok-keyword">def</span> <span class="tok-func">unsharp_mask</span>(image, kernel_size, sigma, amount):
+    gaussian = <span class="tok-func">gaussian_kernel</span>(kernel_size, sigma)
+    impulse = np.<span class="tok-func">zeros_like</span>(gaussian)
+    impulse[kernel_size // <span class="tok-number">2</span>, kernel_size // <span class="tok-number">2</span>] = <span class="tok-number">1.0</span>
+    unsharp_filter = (<span class="tok-number">1.0</span> + amount) * impulse - amount * gaussian
+
+    blurred = <span class="tok-func">convolve_color</span>(image, gaussian)
+    high_frequencies = image - blurred
+    sharpened = <span class="tok-func">convolve_color</span>(image, unsharp_filter)
+    <span class="tok-keyword">return</span> (blurred, high_frequencies,
+            np.<span class="tok-func">clip</span>(sharpened, <span class="tok-number">0</span>, <span class="tok-number">1</span>), unsharp_filter)</code></pre>
+          <p>The Taj Mahal uses a <code>13 × 13</code> Gaussian with <code>σ = 2.0</code>. Results are shown at <code>α = 1.5</code> and a stronger <code>α = 3.0</code>. Symmetric boundary extension avoids introducing a black frame before filtering. The high-pass image below is shifted around middle gray only for display: gray means zero residual, bright values are positive, and dark values are negative.</p>
+
+          <div class="image-grid five-up wide-block sharpening-grid">
+            <figure><img src="web_assets/sharpening/taj-original.jpg" alt="Original Taj Mahal image"><figcaption><b>Original</b><span>I</span></figcaption></figure>
+            <figure><img src="web_assets/sharpening/taj-low-pass.jpg" alt="Gaussian-blurred Taj Mahal"><figcaption><b>Low pass</b><span>Gσ ∗ I</span></figcaption></figure>
+            <figure><img src="web_assets/sharpening/taj-high-pass.jpg" alt="High frequencies of the Taj Mahal displayed around middle gray"><figcaption><b>High pass</b><span>I − Gσ ∗ I</span></figcaption></figure>
+            <figure><img src="web_assets/sharpening/taj-sharpened.jpg" alt="Taj Mahal after unsharp masking"><figcaption><b>Sharpened</b><span>α = 1.5</span></figcaption></figure>
+            <figure><img src="web_assets/sharpening/taj-sharpened-strong.jpg" alt="Taj Mahal after stronger unsharp masking"><figcaption><b>Stronger</b><span>α = 3.0</span></figcaption></figure>
+          </div>
+          <p>At <code>α = 1.5</code>, the façade lattice, dome outline, and trees gain stronger separation while the sky remains nearly unchanged. At <code>α = 3.0</code>, the same structures become more pronounced, but bright and dark overshoot around boundaries begins to look artificial.</p>
+
+          <h3>Can edges extracted after blur recover lost detail?</h3>
+          <p>A sharp raccoon image provides a controlled evaluation. It is first blurred with a <code>17 × 17</code>, <code>σ = 2.8</code> Gaussian, then sharpened with the matching unsharp scale and <code>α = 2.0</code>.</p>
+          <div class="image-grid three-up wide-block evaluation-grid">
+            <figure><img src="web_assets/sharpening/evaluation-original.jpg" alt="Original sharp raccoon"><figcaption><b>Original</b><span>reference</span></figcaption></figure>
+            <figure><img src="web_assets/sharpening/evaluation-blurred.jpg" alt="Artificially blurred raccoon"><figcaption><b>Blurred</b><span>σ = 2.8</span></figcaption></figure>
+            <figure><img src="web_assets/sharpening/evaluation-resharpened.jpg" alt="Raccoon after blur followed by unsharp masking"><figcaption><b>Re-sharpened</b><span>α = 2.0</span></figcaption></figure>
+          </div>
+
+          <h3>FFT evidence</h3>
+          <p>The Fourier magnitude makes the loss measurable. Before the FFT, the grayscale image mean is removed and a two-dimensional Hann window reduces artificial frequencies from opposite image borders. All three plots use one shared log-magnitude display scale, so we can directly compare the missing high-frequency content.</p>
+          <div class="image-grid three-up wide-block evaluation-spectrum-grid">
+            <figure><img src="web_assets/sharpening/evaluation-fft-original.jpg" alt="Windowed Fourier magnitude of the original raccoon"><figcaption><b>Original FFT</b></figcaption></figure>
+            <figure><img src="web_assets/sharpening/evaluation-fft-blurred.jpg" alt="Windowed Fourier magnitude after Gaussian blur"><figcaption><b>Blurred FFT</b></figcaption></figure>
+            <figure><img src="web_assets/sharpening/evaluation-fft-resharpened.jpg" alt="Windowed Fourier magnitude after re-sharpening"><figcaption><b>Re-sharpened FFT</b></figcaption></figure>
+          </div>
+          <p class="display-math"><span class="roman">E</span><sub>high</sub> = ∑<sub>√(fₓ² + fᵧ²) ≥ 0.10</sub> |F(fₓ, fᵧ)|²</p>
+          <p>High-frequency energy is summed outside a radial cutoff of <code>0.10 cycles/pixel</code> and reported relative to the original. MAE measures spatial-domain difference from the same original image.</p>
+          <div class="table-wrap">
+            <table class="spectral-table">
+              <thead><tr><th>Image</th><th>High-frequency energy</th><th>MAE to original</th><th>Interpretation</th></tr></thead>
+              <tbody>
+                <tr><td>Original</td><td><b><span data-metric="evaluation_original_hf_percent">100.00</span>%</b></td><td>0.0000</td><td>Reference detail</td></tr>
+                <tr><td>Gaussian blurred</td><td><b><span data-metric="evaluation_blur_hf_percent">0.39</span>%</b></td><td><span data-metric="evaluation_blur_mae">0.0291</span></td><td>Most fine detail removed</td></tr>
+                <tr><td>Re-sharpened</td><td><b><span data-metric="evaluation_recovered_hf_percent">2.86</span>%</b></td><td><span data-metric="evaluation_recovered_mae">0.0253</span></td><td>Remaining edges amplified</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- <p class="table-note">The exact percentages depend on the stated cutoff and window, but all three images use identical measurement settings.</p> -->
+          <p><strong>Therefore, sharpening a blurred image is not completely ineffective, but it is not inversion.</strong> The recovered image contains only about <span data-metric="evaluation_recovered_hf_percent">2.86</span>% of the original high-frequency energy. Unsharp masking amplifies the weak transitions that survived the blur; it cannot infer the missing fur structure. Raising <span class="inline-math">α</span> further mainly creates halos and amplifies noise.</p>
+        </section>
+
+        <section class="story-section" id="part-2-2" data-section>
+          <p class="section-index">PART 2.2 / HYBRID IMAGES</p>
+          <h2>Hybrid Images.</h2>
+          <p class="lead">A hybrid image combines the smooth structure of one subject with the fine detail of another. Nearby, high frequencies dominate perception; far away, the low-frequency subject takes over.<br>I also provide a FFT-view of understanding hybrid images.</p>
+
+          <h3>Motivation</h3>
+          <p>Human vision does not weight every spatial frequency equally at every distance. By deliberately combining a low-pass component from picture A with a high-pass component from picture B, we get two views in onr picture.</p>
+
+          <h3>Implementation</h3>
+          <p>Corresponding eyes are first mapped to the same position, separation, and angle. This similarity alignment matters because the two frequency bands must support the same perceptual grouping. The aligned images are then filtered separately and added.</p>
+          <div class="hybrid-equations">
+            <p><span class="roman">L</span> = <span class="roman">G</span><sub>σL</sub> ∗ <span class="roman">I</span><sub>low</sub></p>
+            <p><span class="roman">H</span> = <span class="roman">I</span><sub>high</sub> − <span class="roman">G</span><sub>σH</sub> ∗ <span class="roman">I</span><sub>high</sub></p>
+            <p><span class="roman">I</span><sub>hybrid</sub> = clip(<span class="roman">L</span> + <span class="roman">H</span>)</p>
+          </div>
+          <pre class="code-block" data-label="Python · hybrid image core"><code><span class="tok-keyword">def</span> <span class="tok-func">hybrid_components</span>(low_image, high_image,
+                      low_size, low_sigma, high_size, high_sigma):
+    low = <span class="tok-func">convolve_color</span>(
+        low_image, <span class="tok-func">gaussian_kernel</span>(low_size, low_sigma)
+    )
+    high_blur = <span class="tok-func">convolve_color</span>(
+        high_image, <span class="tok-func">gaussian_kernel</span>(high_size, high_sigma)
+    )
+    high = high_image - high_blur
+    <span class="tok-keyword">return</span> low, high
+
+hybrid = np.<span class="tok-func">clip</span>(low + high, <span class="tok-number">0.0</span>, <span class="tok-number">1.0</span>)</code></pre>
+
+          <h3>Example 1: meow?meow?</h3>
+          <p>Derek supplies the low frequencies and remains upright. His full <code>732 × 1024</code> photograph is resized—not cropped—to a <code>366 × 512</code> working canvas with the same aspect ratio. Nutmeg is rotated and scaled so the eyes coincide with Derek's.</p>
+          <div class="image-grid three-up wide-block hybrid-inputs portrait-hybrid">
+            <figure><img src="web_assets/hybrid-derek-nutmeg/derek-aligned.jpg" alt="Derek resized without cropping"><figcaption><b>Low-frequency input</b><span>Derek</span></figcaption></figure>
+            <figure><img src="web_assets/hybrid-derek-nutmeg/nutmeg-aligned.jpg" alt="Nutmeg aligned to Derek with image boundaries retained"><figcaption><b>High-frequency input</b><span>Nutmeg · aligned</span></figcaption></figure>
+            <figure><img src="web_assets/hybrid-derek-nutmeg/hybrid.jpg" alt="Portrait-ratio hybrid image of Derek and Nutmeg"><figcaption><b>Hybrid</b>/figcaption></figure>
+          </div>
+          <div class="image-grid three-up wide-block component-distance-grid portrait-analysis">
+            <figure><img src="web_assets/hybrid-derek-nutmeg/derek-low.jpg" alt="Low-pass filtered Derek"><figcaption><b>Low-pass component</b><span>Derek · σ = 7.0</span></figcaption></figure>
+            <figure><img src="web_assets/hybrid-derek-nutmeg/nutmeg-high.jpg" alt="High-pass Nutmeg displayed around middle gray"><figcaption><b>High-pass component</b><span>Nutmeg · σ = 4.0</span></figcaption></figure>
+            <figure class="distance-control" data-distance>
+              <div class="distance-stage">
+                <img src="web_assets/hybrid-derek-nutmeg/hybrid.jpg" alt="Derek Nutmeg hybrid with adjustable viewing distance">
+                <div class="distance-slider"><span>Near</span><input type="range" min="0" max="100" value="0" aria-label="Adjust Derek and Nutmeg viewing distance"><span>Far</span></div>
+              </div>
+              <figcaption><b>Distance preview</b></figcaption>
+            </figure>
+          </div>
+
+          <h3>Example 2: a classic one</h3>
+          <p>Marilyn supplies the low frequencies with <code>σL = 8.0</code>; Einstein supplies the high frequencies with <code>σH = 3.0</code>. A smaller high-pass scale keeps Einstein's fine facial evidence nearby without letting his broad face shape overwhelm Marilyn at a distance.</p>
+          <div class="image-grid three-up wide-block hybrid-inputs">
+            <figure><img src="web_assets/hybrid-einstein-marilyn/marilyn-aligned.jpg" alt="Aligned Marilyn Monroe input"><figcaption><b>Low-frequency input</b><span>Marilyn</span></figcaption></figure>
+            <figure><img src="web_assets/hybrid-einstein-marilyn/einstein-aligned.jpg" alt="Aligned Albert Einstein input"><figcaption><b>High-frequency input</b><span>Einstein</span></figcaption></figure>
+            <figure><img src="web_assets/hybrid-einstein-marilyn/hybrid-gray.jpg" alt="Hybrid image of Einstein and Marilyn Monroe"><figcaption><b>Hybrid</b><span>low + high</span></figcaption></figure>
+          </div>
+          <div class="image-grid three-up wide-block component-distance-grid">
+            <figure><img src="web_assets/hybrid-einstein-marilyn/marilyn-low.jpg" alt="Low-pass filtered Marilyn Monroe"><figcaption><b>Low-pass component</b><span>σ = 8.0</span></figcaption></figure>
+            <figure><img src="web_assets/hybrid-einstein-marilyn/einstein-high.jpg" alt="High-pass Einstein displayed around middle gray"><figcaption><b>High-pass component</b><span>σ = 3.0</span></figcaption></figure>
+            <figure class="distance-control" data-distance>
+              <div class="distance-stage">
+                <img src="web_assets/hybrid-einstein-marilyn/hybrid-gray.jpg" alt="Einstein Marilyn hybrid with adjustable viewing distance">
+                <div class="distance-slider"><span>Near</span><input type="range" min="0" max="100" value="0" aria-label="Adjust Einstein and Marilyn viewing distance"><span>Far</span></div>
+              </div>
+              <figcaption><b>Distance preview</b></figcaption>
+            </figure>
+          </div>
+          <!-- <p class="distance-note">The slider changes only the displayed size, not the underlying pixels or filters. Moving right suppresses visible fine structure and approximates greater viewing distance.</p> -->
+
+          <h3>Frequency analysis</h3>
+          <p>Each plot shows <span class="inline-math">log(1 + |FFT|)</span> with zero frequency shifted to the center. Marilyn's low-pass spectrum contracts into a bright central region. Einstein's high-pass spectrum loses that center while retaining outward structure. Their hybrid contains both signatures.</p>
+          <div class="image-grid frequency-grid wide-block">
+            <figure><img src="web_assets/hybrid-einstein-marilyn/fft-low-input.jpg" alt="Fourier magnitude of Marilyn input"><figcaption><b>Marilyn</b><span>input FFT</span></figcaption></figure>
+            <figure><img src="web_assets/hybrid-einstein-marilyn/fft-high-input.jpg" alt="Fourier magnitude of Einstein input"><figcaption><b>Einstein</b><span>input FFT</span></figcaption></figure>
+            <figure><img src="web_assets/hybrid-einstein-marilyn/fft-low-filtered.jpg" alt="Fourier magnitude of low-pass Marilyn"><figcaption><b>Low pass</b><span>center retained</span></figcaption></figure>
+            <figure><img src="web_assets/hybrid-einstein-marilyn/fft-high-filtered.jpg" alt="Fourier magnitude of high-pass Einstein"><figcaption><b>High pass</b><span>center removed</span></figcaption></figure>
+            <figure><img src="web_assets/hybrid-einstein-marilyn/fft-hybrid.jpg" alt="Fourier magnitude of hybrid image"><figcaption><b>Hybrid</b><span>both bands</span></figcaption></figure>
+          </div>
+
+          <h3>Example 3: Raccoon & Wolf</h3>
+          <p>The eye landmarks again define a common center, scale, and rotation. Wolf contributes the broad low-frequency head shape (<code>σL = 9.0</code>), while raccoon contributes the mask, whiskers, and fur boundaries (<code>σH = 4.5</code>).</p>
+          <div class="image-grid four-up wide-block hybrid-inputs example-three-grid">
+            <figure><img src="web_assets/hybrid-raccoon-wolf/wolf-aligned.jpg" alt="Aligned wolf input"><figcaption><b>Low-frequency input</b><span>Wolf</span></figcaption></figure>
+            <figure><img src="web_assets/hybrid-raccoon-wolf/raccoon-aligned.jpg" alt="Aligned raccoon input"><figcaption><b>High-frequency input</b><span>Raccoon</span></figcaption></figure>
+            <figure><img src="web_assets/hybrid-raccoon-wolf/hybrid.jpg" alt="Hybrid image of a raccoon and wolf"><figcaption><b>Hybrid</b><span>low-color choice</span></figcaption></figure>
+            <figure class="distance-control" data-distance>
+              <div class="distance-stage">
+                <img src="web_assets/hybrid-raccoon-wolf/hybrid.jpg" alt="Raccoon wolf hybrid with adjustable viewing distance">
+                <div class="distance-slider"><span>Near</span><input type="range" min="0" max="100" value="0" aria-label="Adjust raccoon and wolf viewing distance"><span>Far</span></div>
+              </div>
+              <figcaption><b>Distance preview</b><span>Raccoon → Wolf</span></figcaption>
+            </figure>
+          </div>
+
+          <h3>Color study</h3>
+          <p>Color can be retained independently in either frequency band.</p>
+          <div class="image-grid four-up wide-block color-grid">
+            <figure><img src="web_assets/hybrid-raccoon-wolf/hybrid-gray.jpg" alt="Grayscale raccoon wolf hybrid"><figcaption><b>Neither</b><span>grayscale</span></figcaption></figure>
+            <figure><img src="web_assets/hybrid-raccoon-wolf/hybrid-low-color.jpg" alt="Raccoon wolf hybrid with color only in low frequencies"><figcaption><b>Low only</b><span>best balance</span></figcaption></figure>
+            <figure><img src="web_assets/hybrid-raccoon-wolf/hybrid-high-color.jpg" alt="Raccoon wolf hybrid with color only in high frequencies"><figcaption><b>High only</b><span>edge color</span></figcaption></figure>
+            <figure><img src="web_assets/hybrid-raccoon-wolf/hybrid-both-color.jpg" alt="Raccoon wolf hybrid with both components in color"><figcaption><b>Both</b><span>most vivid</span></figcaption></figure>
+          </div>
+          <h3>Why do the results look similar in pairs?</h3>
+          <p><strong>Because the high-pass raccoon component contains very little chroma.</strong> Its fur, whiskers, and mask edges change the red, green, and blue channels by nearly the same amount, so converting that component to grayscale changes mostly imperceptible color residuals. Human vision is also less sensitive to rapidly alternating color than to high-frequency luminance.</p>
+          <p>The two pairings differ only in whether color is enabled for the high-frequency band. That switch changes the mean pixel value by only about <span data-metric="color_high_effect_gray_low_mae">0.0034</span>. In comparison, enabling color in the smooth low-frequency band changes the image by about <span data-metric="color_low_effect_gray_high_mae">0.0412</span>—roughly twelve times as much.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Color toggle</th><th>Compared results</th><th>Mean pixel change</th><th>Visual effect</th></tr></thead>
+              <tbody>
+                <tr><td>High band</td><td>Neither → High only</td><td><b data-metric="color_high_effect_gray_low_mae">0.0034</b></td><td>Barely visible edge chroma</td></tr>
+                <tr><td>Low band</td><td>Neither → Low only</td><td><b data-metric="color_low_effect_gray_high_mae">0.0412</b></td><td>Broad, clearly visible color</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- <p class="table-note">The corresponding comparisons with the other band already colored produce the same values to four decimal places. This is why the four results appear as two nearly identical pairs.</p> -->
+        </section>
+
+        <section class="story-section" id="part-2-3" data-section>
+          <p class="section-index">PART 2.3 / GAUSSIAN AND LAPLACIAN STACKS</p>
+          <h2>Different resolution<br> different details.</h2>
+          <p class="lead">A Gaussian stack separates progressively smoother structure while preserving the original dimensions at every level. Subtracting adjacent Gaussian levels produces a Laplacian stack whose bands add back to the original image.</p>
+
+          <h3>Motivation</h3>
+          <p>Continuously adding Gaussian blur to an image like the Gaussian pyramid adjusts the images's resolution so that we can seperate the details of different frequencies. The details are attained by subtraction, which acts like the residual, allowing perfect recovery and blending on seperate layers.</p>
+
+          <h3>Implementation</h3>
+          <p>The Gaussian stack starts with the unmodified image. Incremental Gaussian standard deviations are <code>1, 2, 4, 8</code> pixels; because Gaussian variances add, the cumulative effective values are <code>0, 1.00, 2.24, 4.58, 9.22</code>. The Laplacian levels are adjacent differences between those scales, and the last Gaussian level is retained as the low-frequency residual.</p>
+          <div class="stack-equations">
+            <p><span class="roman">G</span>₀ = <span class="roman">I</span>, <span class="roman">G</span>ₗ = Gaussian(<span class="roman">G</span>ₗ₋₁, σₗ)</p>
+            <p><span class="roman">L</span>ₗ = <span class="roman">G</span>ₗ − <span class="roman">G</span>ₗ₊₁, <span class="roman">L</span>₄ = <span class="roman">G</span>₄</p>
+            <p><span class="roman">I</span> = ∑<sub>l=0</sub><sup>4</sup> <span class="roman">L</span>ₗ</p>
+          </div>
+          <pre class="code-block" data-label="Python · stacks from scratch, without downsampling"><code><span class="tok-keyword">def</span> <span class="tok-func">gaussian_stack</span>(image, levels=<span class="tok-number">5</span>, base_sigma=<span class="tok-number">1.0</span>):
+    stack = [image]
+    <span class="tok-keyword">for</span> level <span class="tok-keyword">in</span> <span class="tok-func">range</span>(<span class="tok-number">1</span>, levels):
+        sigma = base_sigma * (<span class="tok-number">2</span> ** (level - <span class="tok-number">1</span>))
+        blurred = <span class="tok-func">gaussian_blur</span>(stack[-<span class="tok-number">1</span>], sigma)
+        stack.<span class="tok-func">append</span>(blurred)  <span class="tok-comment"># same H × W; no subsampling</span>
+    <span class="tok-keyword">return</span> stack
+
+<span class="tok-keyword">def</span> <span class="tok-func">laplacian_stack</span>(gaussian_levels):
+    bands = [gaussian_levels[i] - gaussian_levels[i + <span class="tok-number">1</span>]
+             <span class="tok-keyword">for</span> i <span class="tok-keyword">in</span> <span class="tok-func">range</span>(<span class="tok-func">len</span>(gaussian_levels) - <span class="tok-number">1</span>)]
+    <span class="tok-keyword">return</span> bands + [gaussian_levels[-<span class="tok-number">1</span>]]</code></pre>
+
+          <h3>Four stack views</h3>
+          <p>Each horizontal row moves left to right through increasing effective <span class="inline-math">σ</span> while keeping the same spatial dimensions. Signed Laplacian bands are displayed around middle gray: gray is zero, brighter pixels are positive, and darker pixels are negative. Apple and Orange share one display scale at each level so their responses remain comparable.</p>
+          <div class="stack-showcase wide-block">
+            <div class="stack-band">
+              <h4><span>01</span> Apple · Gaussian</h4>
+              <div class="stack-level-row">
+                <figure><img src="web_assets/stacks-oraple/apple-gaussian-0.jpg" alt="Apple Gaussian stack level 0"><figcaption><b>L0</b><span>σeff = 0</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/apple-gaussian-1.jpg" alt="Apple Gaussian stack level 1"><figcaption><b>L1</b><span>σeff = 1.00</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/apple-gaussian-2.jpg" alt="Apple Gaussian stack level 2"><figcaption><b>L2</b><span>σeff = 2.24</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/apple-gaussian-3.jpg" alt="Apple Gaussian stack level 3"><figcaption><b>L3</b><span>σeff = 4.58</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/apple-gaussian-4.jpg" alt="Apple Gaussian stack level 4"><figcaption><b>L4</b><span>σeff = 9.22</span></figcaption></figure>
+              </div>
+            </div>
+            <div class="stack-band">
+              <h4><span>02</span> Orange · Gaussian</h4>
+              <div class="stack-level-row">
+                <figure><img src="web_assets/stacks-oraple/orange-gaussian-0.jpg" alt="Orange Gaussian stack level 0"><figcaption><b>L0</b><span>σeff = 0</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/orange-gaussian-1.jpg" alt="Orange Gaussian stack level 1"><figcaption><b>L1</b><span>σeff = 1.00</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/orange-gaussian-2.jpg" alt="Orange Gaussian stack level 2"><figcaption><b>L2</b><span>σeff = 2.24</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/orange-gaussian-3.jpg" alt="Orange Gaussian stack level 3"><figcaption><b>L3</b><span>σeff = 4.58</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/orange-gaussian-4.jpg" alt="Orange Gaussian stack level 4"><figcaption><b>L4</b><span>σeff = 9.22</span></figcaption></figure>
+              </div>
+            </div>
+            <div class="stack-band">
+              <h4><span>03</span> Apple · Laplacian</h4>
+              <div class="stack-level-row">
+                <figure><img src="web_assets/stacks-oraple/apple-laplacian-0.jpg" alt="Apple Laplacian stack level 0"><figcaption><b>L0</b><span>σ: 0 → 1.00</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/apple-laplacian-1.jpg" alt="Apple Laplacian stack level 1"><figcaption><b>L1</b><span>σ: 1.00 → 2.24</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/apple-laplacian-2.jpg" alt="Apple Laplacian stack level 2"><figcaption><b>L2</b><span>σ: 2.24 → 4.58</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/apple-laplacian-3.jpg" alt="Apple Laplacian stack level 3"><figcaption><b>L3</b><span>σ: 4.58 → 9.22</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/apple-laplacian-4.jpg" alt="Apple Laplacian residual level"><figcaption><b>L4</b><span>σeff = 9.22</span></figcaption></figure>
+              </div>
+            </div>
+            <div class="stack-band">
+              <h4><span>04</span> Orange · Laplacian</h4>
+              <div class="stack-level-row">
+                <figure><img src="web_assets/stacks-oraple/orange-laplacian-0.jpg" alt="Orange Laplacian stack level 0"><figcaption><b>L0</b><span>σ: 0 → 1.00</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/orange-laplacian-1.jpg" alt="Orange Laplacian stack level 1"><figcaption><b>L1</b><span>σ: 1.00 → 2.24</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/orange-laplacian-2.jpg" alt="Orange Laplacian stack level 2"><figcaption><b>L2</b><span>σ: 2.24 → 4.58</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/orange-laplacian-3.jpg" alt="Orange Laplacian stack level 3"><figcaption><b>L3</b><span>σ: 4.58 → 9.22</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/orange-laplacian-4.jpg" alt="Orange Laplacian residual level"><figcaption><b>L4</b><span>σeff = 9.22</span></figcaption></figure>
+              </div>
+            </div>
+          </div>
+          <p>Summing all five Laplacian levels reconstructs the inputs. Maximum reconstruction error is <span data-metric="apple_stack_reconstruction_error"><code>4.16 × 10⁻¹⁷</code></span> for Apple and <span data-metric="orange_stack_reconstruction_error"><code>2.78 × 10⁻¹⁷</code></span> for Orange—effectively floating-point zero.</p>
+
+          <h3>Oraple components at every level</h3>
+          <p>A binary mask selects Apple on the left and Orange on the right. Its Gaussian stack softens that transition as <span class="inline-math">σ</span> increases.</p>
+          <div class="blend-stack wide-block">
+            <div class="blend-level">
+              <p class="mini-label">HIGH FREQUENCIES · L0 · σ: 0 → 1.00</p>
+              <div class="blend-level-row">
+                <figure><img src="web_assets/stacks-oraple/blend-apple-0.jpg" alt="Masked Apple Laplacian level 0"><figcaption><b>Apple</b></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/blend-orange-0.jpg" alt="Masked Orange Laplacian level 0"><figcaption><b>Orange</b></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/blend-combined-0.jpg" alt="Combined Oraple Laplacian level 0"><figcaption><b>Combined</b><span>L0</span></figcaption></figure>
+              </div>
+            </div>
+            <div class="blend-level">
+              <p class="mini-label">MEDIUM FREQUENCIES · L2 · σ: 2.24 → 4.58</p>
+              <div class="blend-level-row">
+                <figure><img src="web_assets/stacks-oraple/blend-apple-2.jpg" alt="Masked Apple Laplacian level 2"><figcaption><b>Apple</b></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/blend-orange-2.jpg" alt="Masked Orange Laplacian level 2"><figcaption><b>Orange</b></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/blend-combined-2.jpg" alt="Combined Oraple Laplacian level 2"><figcaption><b>Combined</b><span>L2</span></figcaption></figure>
+              </div>
+            </div>
+            <div class="blend-level">
+              <p class="mini-label">LOW FREQUENCIES · L4 · σeff = 9.22</p>
+              <div class="blend-level-row">
+                <figure><img src="web_assets/stacks-oraple/blend-apple-4.jpg" alt="Masked Apple low-frequency residual"><figcaption><b>Apple</b></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/blend-orange-4.jpg" alt="Masked Orange low-frequency residual"><figcaption><b>Orange</b></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/blend-combined-4.jpg" alt="Combined Oraple low-frequency residual"><figcaption><b>Combined</b><span>L4</span></figcaption></figure>
+              </div>
+            </div>
+            <div class="blend-level blend-reconstruction">
+              <p class="mini-label">RECONSTRUCTION · SUM OF L0–L4</p>
+              <div class="blend-level-row">
+                <figure><img src="web_assets/stacks-oraple/oraple-apple-contribution.jpg" alt="Apple contribution reconstructed from all masked Laplacian levels"><figcaption><b>Apple</b><span>Σ left contribution</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/oraple-orange-contribution.jpg" alt="Orange contribution reconstructed from all masked Laplacian levels"><figcaption><b>Orange</b><span>Σ right contribution</span></figcaption></figure>
+                <figure><img src="web_assets/stacks-oraple/oraple.jpg" alt="Final Oraple reconstructed from the blended Laplacian stack"><figcaption><b>Oraple</b><span>Σ combined levels</span></figcaption></figure>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="story-section" id="part-2-4-1" data-section>
+          <p class="section-index">PART 2.4.1 / MULTIRESOLUTION BLENDING</p>
+          <h2>Blend the boundary<br>at every scale.</h2>
+          <p class="lead">A hard cutout chooses one source independently at every pixel. Multiresolution blending instead makes that choice separately within each frequency band, using a progressively blurred version of the same irregular mask.</p>
+
+          <h3>Inputs and naive composite</h3>
+          <p>The mask semantics are fixed before filtering: white is <code>1</code> and preserves Lotus; black is <code>0</code> and replaces that region with Lake. Thresholding the JPEG mask removes compression-gray pixels before its Gaussian stack is constructed.</p>
+          <div class="image-grid four-up wide-block multires-inputs">
+            <figure><img src="web_assets/multires-lotus-lake/lotus.jpg" alt="Original lotus painting"><figcaption><b>Lotus</b><span>white-mask source</span></figcaption></figure>
+            <figure><img src="web_assets/multires-lotus-lake/lake.jpg" alt="Original lake photograph"><figcaption><b>Lake</b><span>black-mask source</span></figcaption></figure>
+            <figure><img src="web_assets/multires-lotus-lake/mask.jpg" alt="Binary irregular mask with white lotus regions and black lake regions"><figcaption><b>Mask</b><span>white = Lotus</span></figcaption></figure>
+            <figure><img src="web_assets/multires-lotus-lake/naive.jpg" alt="Naive Photoshop cutout of lotus regions on the lake"><figcaption><b>Naive</b><span>hard boundary</span></figcaption></figure>
+          </div>
+
+          <h3>Implementation</h3>
+          <p>Lotus, Lake, and the binary mask each receive a five-level stack. This larger <code>690 × 719</code> example uses incremental <code>σ = 2, 4, 8, 16</code>, producing cumulative effective scales <code>0, 2.00, 4.47, 9.17, 18.44</code>. No level is downsampled.</p>
+          <div class="stack-equations">
+            <p><span class="roman">B</span>ₗ = <span class="roman">G</span>ₗ<sup>M</sup><span class="roman">L</span>ₗ<sup>Lotus</sup> + (1 − <span class="roman">G</span>ₗ<sup>M</sup>)<span class="roman">L</span>ₗ<sup>Lake</sup></p>
+            <p><span class="roman">I</span><sub>blend</sub> = ∑<sub>l=0</sub><sup>4</sup> <span class="roman">B</span>ₗ</p>
+          </div>
+          <pre class="code-block" data-label="Python · irregular-mask multiresolution blend"><code>lotus_g = <span class="tok-func">gaussian_stack</span>(lotus, levels=<span class="tok-number">5</span>, base_sigma=<span class="tok-number">2.0</span>)
+lake_g = <span class="tok-func">gaussian_stack</span>(lake, levels=<span class="tok-number">5</span>, base_sigma=<span class="tok-number">2.0</span>)
+mask_g = <span class="tok-func">gaussian_stack</span>(mask, levels=<span class="tok-number">5</span>, base_sigma=<span class="tok-number">2.0</span>)
+
+lotus_l = <span class="tok-func">laplacian_stack</span>(lotus_g)
+lake_l = <span class="tok-func">laplacian_stack</span>(lake_g)
+lotus_parts, lake_parts, blend_l = <span class="tok-func">blend_laplacian_stacks</span>(
+    lotus_l, lake_l, mask_g
+)
+blend = np.<span class="tok-func">clip</span>(np.<span class="tok-func">sum</span>(blend_l, axis=<span class="tok-number">0</span>), <span class="tok-number">0.0</span>, <span class="tok-number">1.0</span>)</code></pre>
+
+          <h3>Masked contributions across scale</h3>
+          <p>As in Part 2.3, the selected rows show <code>L0</code>, <code>L2</code>, <code>L4</code>, and the full reconstruction.</p>
+          <div class="blend-stack multires-blend wide-block">
+            <div class="blend-level">
+              <p class="mini-label">HIGH FREQUENCIES · L0 · σ: 0 → 2.00</p>
+              <div class="blend-level-row">
+                <figure><img src="web_assets/multires-lotus-lake/lotus-level-0.jpg" alt="Masked Lotus high-frequency contribution"><figcaption><b>Lotus</b></figcaption></figure>
+                <figure><img src="web_assets/multires-lotus-lake/lake-level-0.jpg" alt="Masked Lake high-frequency contribution"><figcaption><b>Lake</b></figcaption></figure>
+                <figure><img src="web_assets/multires-lotus-lake/combined-level-0.jpg" alt="Combined high-frequency layer"><figcaption><b>Combined</b><span>L0</span></figcaption></figure>
+              </div>
+            </div>
+            <div class="blend-level">
+              <p class="mini-label">MEDIUM FREQUENCIES · L2 · σ: 4.47 → 9.17</p>
+              <div class="blend-level-row">
+                <figure><img src="web_assets/multires-lotus-lake/lotus-level-2.jpg" alt="Masked Lotus medium-frequency contribution"><figcaption><b>Lotus</b></figcaption></figure>
+                <figure><img src="web_assets/multires-lotus-lake/lake-level-2.jpg" alt="Masked Lake medium-frequency contribution"><figcaption><b>Lake</b></figcaption></figure>
+                <figure><img src="web_assets/multires-lotus-lake/combined-level-2.jpg" alt="Combined medium-frequency layer"><figcaption><b>Combined</b><span>L2</span></figcaption></figure>
+              </div>
+            </div>
+            <div class="blend-level">
+              <p class="mini-label">LOW FREQUENCIES · L4 · σeff = 18.44</p>
+              <div class="blend-level-row">
+                <figure><img src="web_assets/multires-lotus-lake/lotus-level-4.jpg" alt="Masked Lotus low-frequency residual"><figcaption><b>Lotus</b></figcaption></figure>
+                <figure><img src="web_assets/multires-lotus-lake/lake-level-4.jpg" alt="Masked Lake low-frequency residual"><figcaption><b>Lake</b></figcaption></figure>
+                <figure><img src="web_assets/multires-lotus-lake/combined-level-4.jpg" alt="Combined low-frequency residual"><figcaption><b>Combined</b><span>L4</span></figcaption></figure>
+              </div>
+            </div>
+            <div class="blend-level blend-reconstruction">
+              <p class="mini-label">RECONSTRUCTION · SUM OF L0–L4</p>
+              <div class="blend-level-row">
+                <figure><img src="web_assets/multires-lotus-lake/lotus-contribution.jpg" alt="Lotus contribution reconstructed across all levels"><figcaption><b>Lotus</b><span>Σ white contribution</span></figcaption></figure>
+                <figure><img src="web_assets/multires-lotus-lake/lake-contribution.jpg" alt="Lake contribution reconstructed across all levels"><figcaption><b>Lake</b><span>Σ black contribution</span></figcaption></figure>
+                <figure><img src="web_assets/multires-lotus-lake/multires-blend.jpg" alt="Final multiresolution blend of lotus and lake"><figcaption><b>Final blend</b><span>Σ combined levels</span></figcaption></figure>
+              </div>
+            </div>
+          </div>
+
+          <div class="multires-observation wide-block">
+            <div class="compare-shell multires-compare" data-compare style="--position: 50%">
+              <div class="compare-frame">
+                <img src="web_assets/multires-lotus-lake/naive.jpg" alt="Naive hard-mask composite of Lotus and Lake">
+                <div class="compare-after"><img src="web_assets/multires-lotus-lake/multires-blend.jpg" alt="Final multiresolution blend of Lotus and Lake"></div>
+                <div class="compare-line" aria-hidden="true"><span>↔</span></div>
+                <span class="compare-label before">Final blend</span>
+                <span class="compare-label after">Naive</span>
+                <input type="range" min="0" max="100" value="50" aria-label="Compare the naive composite with the final multiresolution blend">
+              </div>
+            </div>
+            <div class="multires-observation-copy">
+              <h3>Observation</h3>
+              <p>The naive composite preserves both sources but exposes the mask as a cutout: color and brightness change abruptly at the lotus boundaries. Multiresolution blending keeps fine lotus texture localized through the high-frequency mask while spreading the larger blue-to-green transition across wider low-frequency masks. The final boundary is softer without uniformly blurring the lotus details or the lake ripples.</p>
+              <!-- <p class="comparison-note">Drag the divider across the lotus boundaries. The left side shows the final multiresolution blend; the right side shows the naive hard-mask composite.</p> -->
+            </div>
+          </div>
+        </section>
+
+        <section class="story-section" id="part-2-4-2" data-section>
+          <p class="section-index">PART 2.4.2 / BELLS &amp; WHISTLES</p>
+          <h2>Atmosphere matching.</h2>
+          <p class="lead">A mask-localized, low-frequency Lab color transfer harmonizes the two sources before they are combined with linear-light multiresolution blending.</p>
+
+          <h3>Motivation</h3>
+          <p>The basic blend deliberately retains Lotus's green and pink low-frequency atmosphere. Against the blue Lake, those broad colors can still reveal which source supplied a region even after the edge becomes soft. Matching the entire Lotus image would hide that difference, but it would also recolor the flowers and erase some of the painting's identity. The useful compromise is to alter broad color while retaining local detail.</p>
+
+          <h3>Implementation</h3>
+          <p>The method is a localized form of statistical color transfer: instead of matching every pixel, it matches the mean and standard deviation of the low-frequency Lab channels measured on the two sides of the mask boundary. This changes the broad lighting and color atmosphere while leaving the high-frequency flower and brushstroke detail available to restore afterward.</p>
+          <ol class="orientation-steps">
+            <li>
+              <h4><span>01</span>Estimate local atmosphere</h4>
+              <p>Blur both sources with <code>σ = 18</code>. A 31-pixel ring just inside the white mask provides Lotus statistics; the neighboring ring outside it provides Lake statistics.</p>
+            </li>
+            <li>
+              <h4><span>02</span>Match only low frequencies</h4>
+              <p>In Lab space, shift Lotus low-frequency mean and variance toward Lake. Strength is <code>0.35</code> for luminance and <code>0.65</code> for the two chroma channels. The original Lotus high-frequency residual is then added back.</p>
+            </li>
+            <li>
+              <h4><span>03</span>Blend in linear light</h4>
+              <p>Decode sRGB before convolution and addition, use six stack levels, then encode the final result back to sRGB. The sixth level increases the largest effective scale from <code>18.44</code> to <code>36.93</code>.</p>
+            </li>
+          </ol>
+          <div class="stack-equations">
+            <p><span class="roman">C</span> = Gaussian(<span class="roman">I</span><sub>Lotus</sub>, 18), <span class="roman">D</span> = <span class="roman">I</span><sub>Lotus</sub> − <span class="roman">C</span></p>
+            <p><span class="roman">I</span>′<sub>Lotus</sub> = LabMatch(<span class="roman">C</span>, <span class="roman">I</span><sub>Lake</sub>) + <span class="roman">D</span></p>
+          </div>
+          <pre class="code-block" data-label="Python · low-frequency color harmonization"><code>lotus_low = <span class="tok-func">gaussian_blur</span>(lotus, sigma=<span class="tok-number">18.0</span>)
+lake_low = <span class="tok-func">gaussian_blur</span>(lake, sigma=<span class="tok-number">18.0</span>)
+lotus_lab = cv2.<span class="tok-func">cvtColor</span>(lotus_low.astype(np.float32), cv2.COLOR_RGB2LAB)
+lake_lab = cv2.<span class="tok-func">cvtColor</span>(lake_low.astype(np.float32), cv2.COLOR_RGB2LAB)
+
+matched = (lotus_lab - source_mean) * color_scale + target_mean
+strength = np.<span class="tok-func">array</span>([<span class="tok-number">0.35</span>, <span class="tok-number">0.65</span>, <span class="tok-number">0.65</span>])
+harmonized_lab = lotus_lab + strength * (matched - lotus_lab)
+harmonized_low = cv2.<span class="tok-func">cvtColor</span>(harmonized_lab, cv2.COLOR_LAB2RGB)
+harmonized_lotus = np.<span class="tok-func">clip</span>(
+    harmonized_low + (lotus - lotus_low), <span class="tok-number">0.0</span>, <span class="tok-number">1.0</span>
+)
+
+lotus_g = <span class="tok-func">gaussian_stack</span>(
+    <span class="tok-func">srgb_to_linear</span>(harmonized_lotus), levels=<span class="tok-number">6</span>, base_sigma=<span class="tok-number">2.0</span>
+)
+lake_g = <span class="tok-func">gaussian_stack</span>(
+    <span class="tok-func">srgb_to_linear</span>(lake), levels=<span class="tok-number">6</span>, base_sigma=<span class="tok-number">2.0</span>
+)
+mask_g = <span class="tok-func">gaussian_stack</span>(mask, levels=<span class="tok-number">6</span>, base_sigma=<span class="tok-number">2.0</span>)
+_, _, blended_levels = <span class="tok-func">blend_laplacian_stacks</span>(
+    <span class="tok-func">laplacian_stack</span>(lotus_g), <span class="tok-func">laplacian_stack</span>(lake_g), mask_g
+)
+enhanced = <span class="tok-func">linear_to_srgb</span>(np.<span class="tok-func">sum</span>(blended_levels, axis=<span class="tok-number">0</span>))</code></pre>
+
+          <!-- <h3>Result</h3> -->
+          <div class="image-grid four-up wide-block color-aware-grid">
+            <figure><img src="web_assets/multires-lotus-lake/lotus-low-before.jpg" alt="Original Lotus low-frequency color atmosphere"><figcaption><b>Lotus low pass</b><span>before matching</span></figcaption></figure>
+            <figure><img src="web_assets/multires-lotus-lake/lotus-low-harmonized.jpg" alt="Lotus low frequencies after Lab color harmonization"><figcaption><b>Matched low pass</b><span>toward Lake</span></figcaption></figure>
+            <figure><img src="web_assets/multires-lotus-lake/multires-blend.jpg" alt="Basic five-level multiresolution blend"><figcaption><b>Basic blend</b><span>5 levels · sRGB</span></figcaption></figure>
+            <figure><img src="web_assets/multires-lotus-lake/color-aware-blend.jpg" alt="Color-aware six-level multiresolution blend"><figcaption><b>Color-aware</b><span>6 levels · linear RGB</span></figcaption></figure>
+          </div>
+
+          <h3>Observation</h3>
+          <p>A slightly gray, soft band remains visible around some blended boundaries. This is caused by the Gaussian mask rather than by a uniform loss of sharpness: near an edge, its values lie between zero and one, so the low-frequency blue Lake color and the green-pink Lotus color are averaged. Mixing substantially different hues reduces saturation and can therefore appear gray. The six-level result also reaches a larger effective scale of <code>σ = 36.93</code>, spreading that low-frequency transition across a wider area. High-frequency flower and brushstroke detail is still selected with a much sharper mask, but it sits on top of this broad color transition, which makes the edge look softer. This is the tradeoff for hiding a hard seam; a narrower mask stack would produce a crisper boundary but make the cutout easier to see.</p>
+        </section>
       </article>
     </div>
   </main>
 
   <footer>
-    <p>CS 180 · Project 2 · Part 1</p>
-    <p>Convolution · Edges · Gaussian · DoG · Orientation</p>
+    <p>CS 180 · Project 2 · Parts 1 &amp; 2</p>
+    <p>Convolution · Edges · Sharpening · Hybrid Images · Multiresolution Blending</p>
   </footer>
 </body>
 </html>

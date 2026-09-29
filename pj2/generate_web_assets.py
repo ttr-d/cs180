@@ -20,6 +20,7 @@ from filter import (
     manual_atan2,
     orientation_rgb,
 )
+from generate_part2_assets import generate_part2_assets
 
 
 ROOT = Path(__file__).resolve().parent
@@ -269,6 +270,8 @@ def main() -> None:
         "orientation_mean_error_degrees": float(np.degrees(np.mean(interior_orientation_error))),
         "orientation_max_error_degrees": float(np.degrees(np.max(interior_orientation_error))),
     }
+    part2_metrics = generate_part2_assets()
+    metrics.update(part2_metrics)
     with (ASSETS / "metrics.json").open("w", encoding="utf-8") as output:
         json.dump(metrics, output, indent=2)
     print(json.dumps(metrics, indent=2))
