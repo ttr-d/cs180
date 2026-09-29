@@ -1,0 +1,17 @@
+{
+  "four_loop_same_error": 3.552713678800501e-15,
+  "two_loop_same_error": 3.552713678800501e-15,
+  "four_loop_full_error": 3.552713678800501e-15,
+  "two_loop_full_error": 3.552713678800501e-15,
+  "benchmark_size": 128,
+  "four_loop_ms": 304.23,
+  "two_loop_ms": 63.32,
+  "scipy_ms": 1.88,
+  "selfie_source_bytes": 381879,
+  "finite_threshold": 0.2,
+  "smooth_threshold": 0.1,
+  "dog_interior_mae": 8.795362010138829e-17,
+  "dog_interior_max_error": 7.494005416219807e-16,
+  "orientation_mean_error_degrees": 0.051357933029027004,
+  "orientation_max_error_degrees": 0.08645180703087307
+}

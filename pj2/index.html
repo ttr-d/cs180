@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CS 180 Project 2 Part 1: convolution, finite differences, derivative of Gaussian filters, and gradient orientation.">
+  <title>CS 180 · Project 2 · Filters and Edges</title>
+  <link rel="stylesheet" href="site.css">
+  <script src="site.js" defer></script>
+</head>
+<body>
+  <div class="reading-progress" aria-hidden="true"><span></span></div>
+
+  <header class="site-header">
+    <a class="brand" href="../index.html" aria-label="CS 180 home">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span>COMPSCI 180</span>
+    </a>
+    <nav class="project-nav" aria-label="Project navigation">
+      <a href="../index.html">PJ0<small>Camera Geometry</small></a>
+      <a href="../pj1/index.html">PJ1<small>Colorizing</small></a>
+      <a class="active" href="index.html" aria-current="page">PJ2<small>Filters &amp; Edges</small></a>
+    </nav>
+    <div class="profile-tools">
+      <button class="profile-trigger" type="button" aria-label="Open author profile" aria-expanded="false" aria-controls="profilePanel">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </button>
+      <aside class="profile-panel" id="profilePanel" aria-hidden="true" inert>
+        <div class="profile-avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </div>
+        <p class="profile-label">Author profile</p>
+        <h2>yihan chen</h2>
+        <a href="mailto:troptroprigolo.d@gmail.com">troptroprigolo.d@gmail.com</a>
+        <p class="profile-credit">CS 180 · Computer Vision and Computational Photography</p>
+      </aside>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="top">
+      <img class="hero-image" src="web_assets/orientation/orientation.jpg" alt="Cameraman gradients colored by orientation">
+      <div class="hero-shade"></div>
+      <div class="hero-copy">
+        <p class="eyebrow">CS 180 · Programming Project 02 · Part 1</p>
+        <h1>Filters<br><em>&amp; Edges</em></h1>
+        <p class="hero-lede">Building convolution from first principles, then using derivatives and Gaussian smoothing to turn pixels into structure.</p>
+        <div class="hero-actions">
+          <a class="read-link" href="#part-1-1">Start with convolution <span aria-hidden="true">↓</span></a>
+          <a class="read-link gallery-link" href="#part-1-4">See orientations <span aria-hidden="true">→</span></a>
+        </div>
+      </div>
+      <p class="hero-caption">Hue = direction · brightness = gradient strength</p>
+    </section>
+
+    <div class="article-layout">
+      <aside class="toc" aria-label="On this page">
+        <p>Part 1</p>
+        <a href="#part-1-1">1.1 · Convolution</a>
+        <a href="#part-1-2">1.2 · Finite Difference</a>
+        <a href="#part-1-3-1">1.3.1 · Gaussian Smoothing</a>
+        <a href="#part-1-3-2">1.3.2 · DoG Filters</a>
+        <a href="#part-1-4">1.4 · Orientations</a>
+      </aside>
+
+      <article class="article">
+        <section class="story-section" id="part-1-1" data-section>
+          <p class="section-index">PART 1.1 / CONVOLUTIONS FROM SCRATCH</p>
+          <h2>Flip. Pad.<br>Slide. Sum.</h2>
+          <p class="lead">Two-dimensional convolution is implemented: once with four explicit loops, and once with two loops plus a vectorized inner product. Both implementations flip the filter before sliding it across a zero-padded image.</p>
+
+          <h3>Motivation</h3>
+          <p>Convolution is the basis of image processing, and this part tries to explore: why the kernel is flipped, which output pixels are produced, and what values are assumed beyond the image boundary.</p>
+
+          <!-- <div class="pipeline wide-block" aria-label="Convolution pipeline">
+            <div><b>01</b><span>Flip</span><small>reverse rows and columns</small></div><i aria-hidden="true">→</i>
+            <div><b>02</b><span>Pad</span><small>zeros around the image</small></div><i aria-hidden="true">→</i>
+            <div><b>03</b><span>Slide</span><small>extract each local window</small></div><i aria-hidden="true">→</i>
+            <div><b>04</b><span>Sum</span><small>window × flipped filter</small></div>
+          </div> -->
+
+          <h3>Implementation</h3>
+          <p>The four-loop version exposes every multiply-add. The two-loop version keeps the loops over output pixels, but lets NumPy evaluate each kernel-sized window at once.</p>
+          <pre class="code-block" data-label="Python · four explicit loops"><code><span class="tok-keyword">def</span> <span class="tok-func">convolve_four_loops</span>(image, kernel, mode=<span class="tok-string">"same"</span>):
+    padded, flipped, (output_height, output_width) = \
+        <span class="tok-func">_prepare_convolution</span>(image, kernel, mode)
+    kernel_height, kernel_width = flipped.shape
+    output = np.<span class="tok-func">zeros</span>((output_height, output_width))
+
+    <span class="tok-keyword">for</span> row <span class="tok-keyword">in</span> <span class="tok-func">range</span>(output_height):
+        <span class="tok-keyword">for</span> column <span class="tok-keyword">in</span> <span class="tok-func">range</span>(output_width):
+            value = <span class="tok-number">0.0</span>
+            <span class="tok-keyword">for</span> kernel_row <span class="tok-keyword">in</span> <span class="tok-func">range</span>(kernel_height):
+                <span class="tok-keyword">for</span> kernel_column <span class="tok-keyword">in</span> <span class="tok-func">range</span>(kernel_width):
+                    value += padded[row + kernel_row,
+                                    column + kernel_column] \
+                             * flipped[kernel_row, kernel_column]
+            output[row, column] = value
+    <span class="tok-keyword">return</span> output</code></pre>
+
+          <pre class="code-block" data-label="Python · two loops + NumPy inner product"><code><span class="tok-keyword">def</span> <span class="tok-func">convolve_two_loops</span>(image, kernel, mode=<span class="tok-string">"same"</span>):
+    padded, flipped, (output_height, output_width) = \
+        <span class="tok-func">_prepare_convolution</span>(image, kernel, mode)
+    kernel_height, kernel_width = flipped.shape
+    output = np.<span class="tok-func">empty</span>((output_height, output_width))
+
+    <span class="tok-keyword">for</span> row <span class="tok-keyword">in</span> <span class="tok-func">range</span>(output_height):
+        <span class="tok-keyword">for</span> column <span class="tok-keyword">in</span> <span class="tok-func">range</span>(output_width):
+            window = padded[row : row + kernel_height,
+                            column : column + kernel_width]
+            output[row, column] = np.<span class="tok-func">sum</span>(window * flipped)
+    <span class="tok-keyword">return</span> output</code></pre>
+
+          <h3>Operating on a photograph</h3>
+          <p>The photograph is converted to grayscale before filtering. A normalized <code>9 × 9</code> box kernel replaces each pixel with the mean of its neighborhood; the two finite-difference kernels respond to horizontal and vertical intensity changes. Computation uses a 720-pixel-wide working image.</p>
+          <div class="operation-flow kernel-flow wide-block">
+            <figure><img src="web_assets/convolution/selfie-grayscale.jpg" alt="Selfie converted to grayscale"><figcaption><b>Grayscale</b><span>original</span></figcaption></figure>
+            <div class="kernel-step" aria-label="Nine by nine box kernel with every entry equal to one over eighty-one">
+              <span>K<sub>box</sub> = 1/81</span>
+              <div class="matrix" aria-hidden="true">
+                <span>1&nbsp;&nbsp;1&nbsp;&nbsp;⋯&nbsp;&nbsp;1</span>
+                <span>1&nbsp;&nbsp;1&nbsp;&nbsp;⋯&nbsp;&nbsp;1</span>
+                <span>⋮&nbsp;&nbsp;⋮&nbsp;&nbsp;⋱&nbsp;&nbsp;⋮</span>
+                <span>1&nbsp;&nbsp;1&nbsp;&nbsp;⋯&nbsp;&nbsp;1</span>
+              </div>
+              <small>9 × 9</small>
+              <b aria-hidden="true">→</b>
+            </div>
+            <figure><img src="web_assets/convolution/selfie-box-9x9.jpg" alt="Selfie convolved with a 9 by 9 box filter"><figcaption><b>Box filtered</b><span>local 9 × 9 mean</span></figcaption></figure>
+          </div>
+          <div class="bells-pair derivative-grid wide-block">
+            <figure><img src="web_assets/convolution/selfie-dx.jpg" alt="Horizontal derivative of the selfie"><figcaption><b>Partial derivative x</b><span>[1, 0, −1]</span></figcaption></figure>
+            <figure><img src="web_assets/convolution/selfie-dy.jpg" alt="Vertical derivative of the selfie"><figcaption><b>Partial derivative y</b><span>[1, 0, −1]ᵀ</span></figcaption></figure>
+          </div>
+          
+          <h3>Why flip?</h3>
+          <p>Cross-correlation slides a kernel unchanged, while convolution evaluates the kernel with reversed coordinates. Re-indexing the mathematical definition shows why the array used inside the sliding-window implementation must be flipped:</p>
+          <p class="display-math">(I ∗ K)[i] = ∑<sub>u</sub> I[i − u]K[u] = ∑<sub>u</sub> I[i + u]K[−u]</p>
+          <p>For a local image patch <span class="inline-math">[1, 2, 4]</span> and kernel <span class="inline-math">[1, 0, −1]</span>, the distinction becomes concrete:</p>
+          <div class="math-table-wrap">
+            <table class="math-comparison-table">
+              <thead><tr><th>Operation</th><th>Kernel actually multiplied</th><th>Result</th></tr></thead>
+              <tbody>
+                <tr><td>Correlation</td><td>[1, 0, −1]</td><td>1 − 4 = −3</td></tr>
+                <tr><td>Convolution</td><td>[−1, 0, 1]</td><td>−1 + 4 = 3</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><strong>The positive convolution response agrees with the visual intuition:</strong> the patch becomes brighter from left to right.<br> Symmetric box and Gaussian kernels look unchanged after flipping, so an asymmetric derivative filter is the useful test case.</p>
+
+          <h3>Correctness and runtime</h3>
+          <p>Correctness is tested on a random <code>13 × 17</code> image with a non-symmetric, even-sized <code>4 × 5</code> kernel. Each NumPy output is compared pixel-by-pixel with SciPy; the table reports the largest absolute difference, so a value close to zero means the results match. Runtime is measured separately by giving all three implementations one shared random <code>128 × 128</code> image and a <code>9 × 9</code> box kernel in <code>same</code> mode. Each timing is the median of repeated runs.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Implementation</th><th>same-mode correctness</th><th>full-mode correctness</th><th>Runtime</th></tr></thead>
+              <tbody>
+                <tr><td>Four Python loops</td><td><b data-metric="four_loop_same_error">3.55 × 10⁻¹⁵</b></td><td><b data-metric="four_loop_full_error">3.55 × 10⁻¹⁵</b></td><td><b><span data-metric="four_loop_ms">304.23</span> ms</b></td></tr>
+                <tr><td>Two loops + NumPy</td><td><b data-metric="two_loop_same_error">3.55 × 10⁻¹⁵</b></td><td><b data-metric="two_loop_full_error">3.55 × 10⁻¹⁵</b></td><td><b><span data-metric="two_loop_ms">63.32</span> ms</b></td></tr>
+                <tr><td>SciPy convolve2d</td><td>Reference</td><td>Reference</td><td><b><span data-metric="scipy_ms">1.88</span> ms</b></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="table-note">These are median wall-clock measurements on this machine and will vary by computer.<br>Vectorizing the inner <code>9 × 9</code> calculation makes the two-loop version several times faster than four loops. SciPy is tens of times faster again because the remaining loops also run in compiled code.</p>
+
+          <h3>Boundary handling</h3>
+          <p>Zero padding is used because in SciPy <code>boundary="fill"</code> means that every location beyond the image boundary is supplied with one constant value, and <code>fillvalue=0</code> chooses zero as that constant. Together, they make SciPy treat the outside of the image as black, exactly like the NumPy implementation.<br> Matching the same rule makes the correctness comparison meaningful.</p>
+          <p>For <code>same</code> mode, only enough zeros are added to preserve the input dimensions; for <code>full</code> mode, <code>kernel_size − 1</code> zeros are added on every side so every partial overlap is represented.</p>
+          <p>Therefore, we can see that there is a bright edge on the top of the y-derivative picture, indicating it's becoming brighter from the padded frame to the picture.</p>
+          <!-- <p>This choice is simple and does not invent reflected or repeated image content. Its tradeoff is an artificial transition from the image to black, which appears as a bright frame in derivative results. That border response is therefore a padding artifact, not an edge in the original scene.</p> -->
+        </section>
+
+        <section class="story-section" id="part-1-2" data-section>
+          <p class="section-index">PART 1.2 / FINITE DIFFERENCE OPERATOR</p>
+          <h2>Edges detection.</h2>
+          <p class="lead">Convolving the cameraman image with <em>D<sub>x</sub> = [1, 0, −1]</em> and <em>D<sub>y</sub> = D<sub>x</sub><sup>T</sup></em> isolates change in two perpendicular directions and use their Euclidean length for a direction-independent measure of edge strength.</p>
+
+          <h3>Motivation</h3>
+          <p>Objects are not defined by a particular gray value, shadow may cause the same object can be bright on one side and dark on another. Boundaries are better indicated by rapid spatial change, which could be measured by partial derivatives along each axis.</p>
+
+          <h3>Implementation</h3>
+
+          <div class="gradient-equation">
+            <span>I</span><span class="math-operator">∗</span><span>D<sub>x</sub>, D<sub>y</sub></span><span class="math-operator">→</span><span>I<sub>x</sub>, I<sub>y</sub></span><span class="math-operator">→</span><strong>√(I<sub>x</sub>² + I<sub>y</sub>²)</strong>
+          </div>
+
+          <div class="image-grid four-up wide-block">
+            <figure><img src="web_assets/finite-difference/cameraman.jpg" alt="Original cameraman image"><figcaption><b>Input</b><span>I</span></figcaption></figure>
+            <figure><img src="web_assets/finite-difference/dx.jpg" alt="Cameraman partial derivative in x"><figcaption><b>x derivative</b><span>I<sub>x</sub></span></figcaption></figure>
+            <figure><img src="web_assets/finite-difference/dy.jpg" alt="Cameraman partial derivative in y"><figcaption><b>y derivative</b><span>I<sub>y</sub></span></figcaption></figure>
+            <figure><img src="web_assets/finite-difference/magnitude.jpg" alt="Cameraman gradient magnitude"><figcaption><b>Magnitude</b><span>‖∇I‖</span></figcaption></figure>
+          </div>
+
+          <h3>Threshold choosing</h3>
+          <div class="decision-layout wide-block">
+            <figure class="threshold-output"><img id="thresholdImage" src="web_assets/finite-difference/edges-020.jpg" alt="Finite-difference edge image at threshold 0.20"><figcaption><b id="thresholdFormula">‖∇I‖ ≥ 0.20</b></figcaption></figure>
+            <div>
+              <div class="threshold-switcher" role="group" aria-label="Preview different gradient thresholds">
+                <button type="button" data-threshold="0.10" data-image="web_assets/finite-difference/edges-010.jpg" data-heading="Too much texture" data-copy="The subject is complete, but weak grass and background responses create a noisy edge map." aria-pressed="false"><img src="web_assets/finite-difference/edges-010.jpg" alt=""><span>0.10</span></button>
+                <button type="button" data-threshold="0.15" data-image="web_assets/finite-difference/edges-015.jpg" data-heading="A quieter intermediate" data-copy="Much of the weakest texture disappears while fine edges around the camera are still retained." aria-pressed="false"><img src="web_assets/finite-difference/edges-015.jpg" alt=""><span>0.15</span></button>
+                <button class="active" type="button" data-threshold="0.20" data-image="web_assets/finite-difference/edges-020.jpg" data-heading="Keep structure, reject texture." data-copy="The silhouette, face, camera, tripod, and horizon remain legible while most weak texture disappears. A few isolated high-contrast grass pixels remain; removing all of them would also erase meaningful fine edges around the camera." aria-pressed="true"><img src="web_assets/finite-difference/edges-020.jpg" alt=""><span>0.20</span></button>
+                <button type="button" data-threshold="0.30" data-image="web_assets/finite-difference/edges-030.jpg" data-heading="Too sparse" data-copy="Background noise is strongly suppressed, but smaller true contours around the face and camera begin to disappear." aria-pressed="false"><img src="web_assets/finite-difference/edges-030.jpg" alt=""><span>0.30</span></button>
+              </div>
+              <p class="mini-label" id="thresholdChoice">CHOSEN THRESHOLD · 0.20</p>
+              <h3 id="thresholdHeading">Keep structure, reject texture.</h3>
+              <p id="thresholdCopy">The silhouette, face, camera, tripod, and horizon remain legible while most weak texture disappears. A few isolated high-contrast grass pixels remain; removing all of them would also erase meaningful fine edges around the camera.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="story-section" id="part-1-3-1" data-section>
+          <p class="section-index">PART 1.3.1 / GAUSSIAN SMOOTHING</p>
+          <h2>Suppress noise<br>before differentiating.</h2>
+          <p class="lead">In this section, I applied Gaussian low-pass filtering to filter out the rapid intensity change. It is then followed by the same derivative and thresholding pipeline.</p>
+
+          <h3>Motivation</h3>
+          <p>Differentiation amplifies high-frequency content, which includes useful boundaries but also sensor noise and fine texture. A Gaussian attenuates those unstable frequencies before the derivative is taken. Its separability also makes the two-dimensional kernel easy to construct from one-dimensional samples.</p>
+
+          <h3>Implementation</h3>
+
+          <pre class="code-block" data-label="Python · Gaussian-then-derivative"><code>gaussian_1d = cv2.<span class="tok-func">getGaussianKernel</span>(GAUSSIAN_SIZE, GAUSSIAN_SIGMA)
+gaussian = gaussian_1d <span class="tok-op">@</span> gaussian_1d.T
+
+blurred = <span class="tok-func">convolve2d</span>(
+    cameraman, gaussian, mode=<span class="tok-string">"same"</span>,
+    boundary=<span class="tok-string">"fill"</span>, fillvalue=<span class="tok-number">0</span>,
+)
+smooth_dx = <span class="tok-func">convolve2d</span>(
+    blurred, DX, mode=<span class="tok-string">"same"</span>, boundary=<span class="tok-string">"fill"</span>, fillvalue=<span class="tok-number">0</span>
+)
+smooth_dy = <span class="tok-func">convolve2d</span>(
+    blurred, DY, mode=<span class="tok-string">"same"</span>, boundary=<span class="tok-string">"fill"</span>, fillvalue=<span class="tok-number">0</span>
+)
+smooth_magnitude = <span class="tok-func">gradient_magnitude</span>(smooth_dx, smooth_dy)
+smooth_edges = smooth_magnitude <span class="tok-op">&gt;=</span> SMOOTH_THRESHOLD</code></pre>
+
+          <div class="gaussian-intro wide-block">
+            <figure><img src="web_assets/gaussian/gaussian-kernel.png" alt="Heatmap of the Gaussian filter"><figcaption><b>Gaussian kernel</b><span>9 × 9 · σ = 1.5 · sum = 1</span></figcaption></figure>
+            <figure><img src="web_assets/gaussian/blurred.jpg" alt="Gaussian-smoothed cameraman image"><figcaption><b>Smoothed image</b><span>I ∗ G</span></figcaption></figure>
+          </div>
+          <div class="image-grid four-up wide-block">
+            <figure><img src="web_assets/gaussian/smooth-dx.jpg" alt="x derivative after Gaussian smoothing"><figcaption><b>Smoothed x</b><span>(I ∗ G) ∗ D<sub>x</sub></span></figcaption></figure>
+            <figure><img src="web_assets/gaussian/smooth-dy.jpg" alt="y derivative after Gaussian smoothing"><figcaption><b>Smoothed y</b><span>(I ∗ G) ∗ D<sub>y</sub></span></figcaption></figure>
+            <figure><img src="web_assets/gaussian/smooth-magnitude.jpg" alt="Gradient magnitude after Gaussian smoothing"><figcaption><b>Magnitude</b><span>smoothed ‖∇I‖</span></figcaption></figure>
+            <figure><img src="web_assets/gaussian/smooth-edges.jpg" alt="Thresholded edges after Gaussian smoothing"><figcaption><b>Binary edges</b><span>threshold = 0.10</span></figcaption></figure>
+          </div>
+
+          <div class="compare-shell wide-block" data-compare style="--position: 50%">
+            <div class="compare-frame">
+              <img src="web_assets/finite-difference/edges.jpg" alt="Edges from finite differences without smoothing">
+              <div class="compare-after"><img src="web_assets/gaussian/smooth-edges.jpg" alt="Edges after Gaussian smoothing"></div>
+              <div class="compare-line" aria-hidden="true"><span>↔</span></div>
+              <span class="compare-label before">Gaussian first</span>
+              <span class="compare-label after">Raw finite difference</span>
+              <input type="range" min="0" max="100" value="50" aria-label="Compare raw and Gaussian-smoothed edge images">
+            </div>
+            <p>Drag to compare. Gaussian smoothing removes isolated grass responses and joins fragmented contours. The tradeoff is thicker, slightly less precisely localized edges, so the post-smoothing threshold is lowered to <code>0.10</code>.</p>
+          </div>
+        </section>
+
+        <section class="story-section" id="part-1-3-2" data-section>
+          <p class="section-index">PART 1.3.2 / DERIVATIVE OF GAUSSIAN</p>
+          <h2>Merging two filters.</h2>
+          <p class="lead">Convolution is associative. In this section, I merge the two pipeline to create derivative-of-Gaussian filters.</p>
+
+          <h3>Motivation</h3>
+          <p>Smoothing and differentiation are both linear, shift-invariant operations. Associativity allows them to be combined into a single reusable filter per axis. The one-pass form clarifies the mathematics and avoids storing a separate blurred intermediate when only the derivatives are needed.</p>
+
+          <h3>Implementation</h3>
+
+          <div class="dog-equations">
+            <p>(I ∗ G) ∗ D<sub>x</sub> = I ∗ (G ∗ D<sub>x</sub>)</p>
+            <p>(I ∗ G) ∗ D<sub>y</sub> = I ∗ (G ∗ D<sub>y</sub>)</p>
+          </div>
+
+          <pre class="code-block" data-label="Python · construct and apply DoG filters"><code>dog_x = <span class="tok-func">convolve2d</span>(
+    gaussian, DX, mode=<span class="tok-string">"full"</span>, boundary=<span class="tok-string">"fill"</span>, fillvalue=<span class="tok-number">0</span>
+)
+dog_y = <span class="tok-func">convolve2d</span>(
+    gaussian, DY, mode=<span class="tok-string">"full"</span>, boundary=<span class="tok-string">"fill"</span>, fillvalue=<span class="tok-number">0</span>
+)
+
+dog_dx = <span class="tok-func">convolve2d</span>(
+    cameraman, dog_x, mode=<span class="tok-string">"same"</span>, boundary=<span class="tok-string">"fill"</span>, fillvalue=<span class="tok-number">0</span>
+)
+dog_dy = <span class="tok-func">convolve2d</span>(
+    cameraman, dog_y, mode=<span class="tok-string">"same"</span>, boundary=<span class="tok-string">"fill"</span>, fillvalue=<span class="tok-number">0</span>
+)
+dog_magnitude = <span class="tok-func">gradient_magnitude</span>(dog_dx, dog_dy)
+dog_edges = dog_magnitude <span class="tok-op">&gt;=</span> SMOOTH_THRESHOLD</code></pre>
+          <div class="bells-pair wide-block filter-pair">
+            <figure><img src="web_assets/dog/dog-x-filter.png" alt="Derivative of Gaussian filter in x"><figcaption><b>DoG-x</b><span>positive and negative lobes</span></figcaption></figure>
+            <figure><img src="web_assets/dog/dog-y-filter.png" alt="Derivative of Gaussian filter in y"><figcaption><b>DoG-y</b><span>DoG-x transposed</span></figcaption></figure>
+          </div>
+          <div class="image-grid four-up wide-block">
+            <figure><img src="web_assets/dog/dog-dx.jpg" alt="Cameraman convolved with DoG-x"><figcaption><b>One-pass x</b><span>I ∗ DoG<sub>x</sub></span></figcaption></figure>
+            <figure><img src="web_assets/dog/dog-dy.jpg" alt="Cameraman convolved with DoG-y"><figcaption><b>One-pass y</b><span>I ∗ DoG<sub>y</sub></span></figcaption></figure>
+            <figure><img src="web_assets/dog/dog-magnitude.jpg" alt="Gradient magnitude from DoG filters"><figcaption><b>Magnitude</b><span>one convolution per axis</span></figcaption></figure>
+            <figure><img src="web_assets/dog/dog-edges.jpg" alt="Thresholded edges from DoG filters"><figcaption><b>Binary edges</b><span>threshold = 0.10</span></figcaption></figure>
+          </div>
+
+          <h3>Correctness</h3>
+          <p>We now have two ways to calculate the x derivative, we prove that they produce the same result.</p>
+          <div class="path-comparison">
+            <div><b>Two-pass route</b><span>I → blur with G → differentiate with D<sub>x</sub></span><code>(I ∗ G) ∗ D<sub>x</sub></code></div>
+            <div><b>One-pass route</b><span>combine G and D<sub>x</sub> → filter I once</span><code>I ∗ DoG<sub>x</sub></code></div>
+          </div>
+          <p>To verify the result, the two output images are subtracted pixel by pixel. A difference of zero means they agree exactly. Because two-pass filtering pads the image twice while one-pass filtering pads it once, the artificial outer frame is excluded and the numerical comparison is made on the shared interior.</p>
+          <div class="verification-panel wide-block">
+            <figure><img src="web_assets/dog/path-difference.png" alt="Magnified difference between two-stage Gaussian derivatives and one-stage DoG derivatives"><figcaption><b>Magnified absolute difference</b><span>black = agreement · white = difference</span></figcaption></figure>
+            <div class="verification-copy">
+              <p class="mini-label">INTERIOR NUMERICAL CHECK</p>
+              <strong><span data-metric="dog_interior_mae">8.80 × 10⁻¹⁷</span></strong>
+              <span>mean absolute error</span>
+              <strong><span data-metric="dog_interior_max_error">7.49 × 10⁻¹⁶</span></strong>
+              <span>maximum absolute error</span>
+              <p>Both values are effectively zero: the two paths produce the same interior image up to floating-point rounding. The difference image is strongly amplified for visibility; it does not represent a visually meaningful disagreement.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="story-section" id="part-1-4" data-section>
+          <p class="section-index">PART 1.4 / BELLS &amp; WHISTLES</p>
+          <h2>Direction representation.</h2>
+          <p class="lead">Gradient magnitude says how strongly intensity changes; orientation says where it changes toward. Hue is used to represent that orientation on a cyclic color scale, with value representing the magnitude.</p>
+
+          <h3>Motivation</h3>
+          <p>Magnitude alone cannot distinguish a vertical boundary from a horizontal or diagonal one. Orientation supplies that missing geometry and is useful for shape description, feature matching, and histogram-based descriptors. The HSV space is a great ides, and Hue is a natural display because both direction and color are cyclic: <code>−π</code> and <code>π</code> meet at the same point!</p>
+
+          <h3>Implementation</h3>
+
+          <ol class="orientation-steps">
+            <li>
+              <h4><span>01</span>Reduce</h4>
+              <p>Let <code>x = I<sub>x</sub></code> and <code>y = I<sub>y</sub></code>. The ratio <code>min(|x|,|y|) / max(|x|,|y|)</code> is always in <code>[0,1]</code>. The reduction does not forget which component is larger: <code>y_is_dominant = |y| &gt; |x|</code> is recorded separately and used during restoration.</p>
+            </li>
+            <li>
+              <h4><span>02</span>Approximate</h4>
+              <p>A low-degree polynomial approximates arctangent only on <code>[0,1]</code>. Keeping the input bounded avoids very large ratios when <code>x</code> is near zero and retains a small calculation error.</p>
+            </li>
+            <li>
+              <h4><span>03</span>Restore</h4>
+              <p>If y is dominant, reflect the reference angle with <code>π/2 − base</code>; then use the signs of x and y to restore the quadrant.<br>For example, <code>I<sub>x</sub>=2</code> and <code>I<sub>y</sub>=5</code> give <code>ratio=0.4</code>. Since y is dominant and both signs are positive, the restored angle is <code>π/2 − atan(0.4) ≈ 68.2°</code>.</p>
+            </li>
+            <li>
+              <h4><span>04</span>Color</h4>
+              <p>Map the restored angle from <code>[−π,π]</code> to cyclic hue. Gradient magnitude controls brightness, but only pixels with <code>‖∇I‖ ≥ 0.10</code> keep that color; weaker responses are set to black.</p>
+            </li>
+          </ol>
+
+          <pre class="code-block" data-label="Python · manual atan2"><code><span class="tok-keyword">def</span> <span class="tok-func">manual_atan2</span>(y, x):
+    y, x = np.<span class="tok-func">broadcast_arrays</span>(
+        np.<span class="tok-func">asarray</span>(y, dtype=np.float64),
+        np.<span class="tok-func">asarray</span>(x, dtype=np.float64),
+    )
+    abs_x, abs_y = np.<span class="tok-func">abs</span>(x), np.<span class="tok-func">abs</span>(y)
+    y_is_dominant = abs_y <span class="tok-op">&gt;</span> abs_x
+    larger = np.<span class="tok-func">maximum</span>(abs_x, abs_y)
+    ratio = np.<span class="tok-func">divide</span>(
+        np.<span class="tok-func">minimum</span>(abs_x, abs_y), larger,
+        out=np.<span class="tok-func">zeros_like</span>(larger), where=larger <span class="tok-op">&gt;</span> <span class="tok-number">0</span>,
+    )
+
+    base = (np.pi / <span class="tok-number">4.0</span>) * ratio \
+           - ratio * (ratio - <span class="tok-number">1.0</span>) \
+           * (<span class="tok-number">0.2447</span> + <span class="tok-number">0.0663</span> * ratio)
+    first_quadrant = np.<span class="tok-func">where</span>(
+        y_is_dominant, np.pi / <span class="tok-number">2.0</span> - base, base
+    )
+
+    angle = np.<span class="tok-func">where</span>(
+        x <span class="tok-op">&gt;=</span> <span class="tok-number">0</span>,
+        np.<span class="tok-func">where</span>(y <span class="tok-op">&gt;=</span> <span class="tok-number">0</span>, first_quadrant, -first_quadrant),
+        np.<span class="tok-func">where</span>(y <span class="tok-op">&gt;=</span> <span class="tok-number">0</span>, np.pi - first_quadrant,
+                              first_quadrant - np.pi),
+    )
+    <span class="tok-keyword">return</span> np.<span class="tok-func">where</span>((x == <span class="tok-number">0</span>) &amp; (y == <span class="tok-number">0</span>), <span class="tok-number">0.0</span>, angle)</code></pre>
+
+          <pre class="code-block" data-label="Python · edge-only orientation color"><code><span class="tok-keyword">def</span> <span class="tok-func">orientation_rgb</span>(dx, dy, threshold=<span class="tok-number">0.0</span>):
+    magnitude = <span class="tok-func">gradient_magnitude</span>(dx, dy)
+    scale = <span class="tok-func">max</span>(np.<span class="tok-func">percentile</span>(magnitude, <span class="tok-number">99.0</span>),
+                np.finfo(float).eps)
+    value = np.<span class="tok-func">clip</span>(magnitude / scale, <span class="tok-number">0.0</span>, <span class="tok-number">1.0</span>) ** <span class="tok-number">0.55</span>
+    value = np.<span class="tok-func">where</span>(magnitude <span class="tok-op">&gt;=</span> threshold, value, <span class="tok-number">0.0</span>)
+    hue = (<span class="tok-func">manual_atan2</span>(dy, dx) + np.pi) / (<span class="tok-number">2.0</span> * np.pi)
+    <span class="tok-keyword">return</span> <span class="tok-func">hsv_to_rgb</span>(hue, np.<span class="tok-func">ones_like</span>(hue), value)</code></pre>
+
+          <h3>Why did dark regions still have color?</h3>
+          <p>A gradient in a flat-looking region is usually small, but rarely exactly zero because of texture, compression, and numerical variation. The earlier visualization assigned a hue to every nonzero gradient and used the exponent <code>0.55</code> to make weak magnitudes easier to see, so faint colors remained outside strong edges. For an edge-orientation visualization, the clearer choice is to apply the same <code>0.10</code> edge mask.</p>
+
+          <div class="orientation-hero wide-block">
+            <div class="orientation-pair">
+              <figure><img src="web_assets/orientation/orientation-all.jpg" alt="All cameraman gradients encoded as hue, with magnitude controlling value"><figcaption><b>All gradients</b></figcaption></figure>
+              <figure><img src="web_assets/orientation/orientation.jpg" alt="Cameraman edge orientations after applying threshold 0.10"><figcaption><b>Edges only</b><span>threshold = 0.10</span></figcaption></figure>
+            </div>
+            <div class="orientation-legend">
+              <p class="mini-label">CYCLIC DIRECTION KEY</p>
+              <img src="web_assets/orientation/orientation-key.jpg" alt="Cyclic hue key for gradient orientation">
+              <div class="legend-labels"><span>−π</span><span>−π/2</span><span>0</span><span>π/2</span><span>π</span></div>
+              <p>Both views use hue for direction and HSV value for normalized gradient magnitude, so stronger changes appear brighter. The left view retains every nonzero response; the right view additionally sets pixels below <code>0.10</code> to black.</p>
+            </div>
+          </div>
+
+          <h3>Correctness</h3>
+          <p>The orientation image above is produced entirely by <code>manual_atan2</code>. Afterward, <code>np.arctan2</code> is called once as a reference answer—not as an input to the algorithm. The angular difference is wrapped back into <code>[−π,π]</code> so that equivalent directions near the wrap point, such as <code>−π</code> and <code>π</code>, are not mistakenly treated as far apart. Error is measured only on retained edge pixels in the valid interior.</p>
+          <pre class="code-block" data-label="Python · correctness check"><code>reference = np.<span class="tok-func">arctan2</span>(dog_dy, dog_dx)
+wrapped_error = np.<span class="tok-func">abs</span>(
+    ((<span class="tok-func">manual_atan2</span>(dog_dy, dog_dx) - reference + np.pi)
+     % (<span class="tok-number">2</span> * np.pi)) - np.pi
+)
+edge_mask = dog_magnitude <span class="tok-op">&gt;=</span> SMOOTH_THRESHOLD
+edge_error = wrapped_error[interior][edge_mask[interior]]</code></pre>
+          <p>The retained edge pixels have a mean angular error of <span data-metric="orientation_mean_error_degrees">0.051</span>° and a maximum angular error of <span data-metric="orientation_max_error_degrees">0.086</span>°.</p>
+        </section>
+      </article>
+    </div>
+  </main>
+
+  <footer>
+    <p>CS 180 · Project 2 · Part 1</p>
+    <p>Convolution · Edges · Gaussian · DoG · Orientation</p>
+  </footer>
+</body>
+</html>
