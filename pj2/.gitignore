@@ -1,7 +1,8 @@
 __pycache__/
 *.py[cod]
+code/.venv/
 
 # Original inputs and reproducible generated figures are not part of a
-# code-only submission. Run generate_web_assets.py to rebuild web_assets/.
+# code-only submission. Run code/main.py to rebuild web/web_assets/.
 source_images/
-# web_assets/
+# web/web_assets/
