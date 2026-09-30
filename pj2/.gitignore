@@ -4,4 +4,4 @@ __pycache__/
 # Original inputs and reproducible generated figures are not part of a
 # code-only submission. Run generate_web_assets.py to rebuild web_assets/.
 source_images/
-web_assets/
+# web_assets/
