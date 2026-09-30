@@ -41,7 +41,7 @@
 
   <main>
     <section class="hero" id="top">
-      <img class="hero-image" src="web_assets/orientation/orientation.jpg" alt="Cameraman gradients colored by orientation">
+      <img class="hero-image" src="web_assets/orientation/orientation.jpg" alt="Orientation image with threshold.">
       <div class="hero-shade"></div>
       <div class="hero-copy">
         <p class="eyebrow">CS 180 · Programming Project 02 · Parts 1 &amp; 2</p>
@@ -49,10 +49,10 @@
         <p class="hero-lede">Building convolution from first principles, then using spatial frequency to find edges, sharpen detail, and combine perceptions.</p>
         <div class="hero-actions">
           <a class="read-link" href="#part-1-1">Start with convolution <span aria-hidden="true">↓</span></a>
-          <a class="read-link gallery-link" href="#part-2-2">See hybrid images <span aria-hidden="true">→</span></a>
+          <a class="read-link gallery-link" href="#gallery">See gallery <span aria-hidden="true">→</span></a>
         </div>
       </div>
-      <p class="hero-caption">Spatial gradients meet frequency decomposition</p>
+      <p class="hero-caption">Edge detection under HSV space</p>
     </section>
 
     <div class="article-layout">
@@ -68,7 +68,8 @@
         <a href="#part-2-2">2.2 · Hybrid Images</a>
         <a href="#part-2-3">2.3 · Gaussian &amp; Laplacian Stacks</a>
         <a href="#part-2-4-1">2.4.1 · Multiresolution Blending</a>
-        <a href="#part-2-4-2">2.4.2 · Bells &amp; Whistles</a>
+        <a href="#part-2-4-2">2.4.2 · Atmosphere Matching</a>
+        <a href="#gallery">Gallery</a>
       </aside>
 
       <article class="article">
@@ -252,6 +253,7 @@ smooth_edges = smooth_magnitude <span class="tok-op">&gt;=</span> SMOOTH_THRESHO
             <figure><img src="web_assets/gaussian/smooth-edges.jpg" alt="Thresholded edges after Gaussian smoothing"><figcaption><b>Binary edges</b><span>threshold = 0.10</span></figcaption></figure>
           </div>
 
+          <h3>Comparison</h3>
           <div class="compare-shell wide-block" data-compare style="--position: 50%">
             <div class="compare-frame">
               <img src="web_assets/finite-difference/edges.jpg" alt="Edges from finite differences without smoothing">
@@ -261,12 +263,12 @@ smooth_edges = smooth_magnitude <span class="tok-op">&gt;=</span> SMOOTH_THRESHO
               <span class="compare-label after">Raw finite difference</span>
               <input type="range" min="0" max="100" value="50" aria-label="Compare raw and Gaussian-smoothed edge images">
             </div>
-            <p>Drag to compare. Gaussian smoothing removes isolated grass responses and joins fragmented contours. The tradeoff is thicker, slightly less precisely localized edges, so the post-smoothing threshold is lowered to <code>0.10</code>.</p>
+            <!-- <p>Drag to compare. Gaussian smoothing removes isolated grass responses and joins fragmented contours. The tradeoff is thicker, slightly less precisely localized edges, so the post-smoothing threshold is lowered to <code>0.10</code>.</p> -->
           </div>
         </section>
 
         <section class="story-section" id="part-1-3-2" data-section>
-          <p class="section-index">PART 1.3.2 / DERIVATIVE OF GAUSSIAN</p>
+          <p class="section-index">PART 1.3.2 / DoG Filters</p>
           <h2>Merging two filters.</h2>
           <p class="lead">Convolution is associative. In this section, I merge the two pipeline to create derivative-of-Gaussian filters.</p>
 
@@ -522,7 +524,7 @@ hybrid = np.<span class="tok-func">clip</span>(low + high, <span class="tok-numb
           <div class="image-grid three-up wide-block hybrid-inputs portrait-hybrid">
             <figure><img src="web_assets/hybrid-derek-nutmeg/derek-aligned.jpg" alt="Derek resized without cropping"><figcaption><b>Low-frequency input</b><span>Derek</span></figcaption></figure>
             <figure><img src="web_assets/hybrid-derek-nutmeg/nutmeg-aligned.jpg" alt="Nutmeg aligned to Derek with image boundaries retained"><figcaption><b>High-frequency input</b><span>Nutmeg · aligned</span></figcaption></figure>
-            <figure><img src="web_assets/hybrid-derek-nutmeg/hybrid.jpg" alt="Portrait-ratio hybrid image of Derek and Nutmeg"><figcaption><b>Hybrid</b>/figcaption></figure>
+            <figure><img src="web_assets/hybrid-derek-nutmeg/hybrid.jpg" alt="Portrait-ratio hybrid image of Derek and Nutmeg"><figcaption><b>Hybrid</b></figcaption></figure>
           </div>
           <div class="image-grid three-up wide-block component-distance-grid portrait-analysis">
             <figure><img src="web_assets/hybrid-derek-nutmeg/derek-low.jpg" alt="Low-pass filtered Derek"><figcaption><b>Low-pass component</b><span>Derek · σ = 7.0</span></figcaption></figure>
@@ -541,7 +543,7 @@ hybrid = np.<span class="tok-func">clip</span>(low + high, <span class="tok-numb
           <div class="image-grid three-up wide-block hybrid-inputs">
             <figure><img src="web_assets/hybrid-einstein-marilyn/marilyn-aligned.jpg" alt="Aligned Marilyn Monroe input"><figcaption><b>Low-frequency input</b><span>Marilyn</span></figcaption></figure>
             <figure><img src="web_assets/hybrid-einstein-marilyn/einstein-aligned.jpg" alt="Aligned Albert Einstein input"><figcaption><b>High-frequency input</b><span>Einstein</span></figcaption></figure>
-            <figure><img src="web_assets/hybrid-einstein-marilyn/hybrid-gray.jpg" alt="Hybrid image of Einstein and Marilyn Monroe"><figcaption><b>Hybrid</b><span>low + high</span></figcaption></figure>
+            <figure><img src="web_assets/hybrid-einstein-marilyn/hybrid-gray.jpg" alt="Hybrid image of Einstein and Marilyn Monroe"><figcaption><b>Hybrid</b></figcaption></figure>
           </div>
           <div class="image-grid three-up wide-block component-distance-grid">
             <figure><img src="web_assets/hybrid-einstein-marilyn/marilyn-low.jpg" alt="Low-pass filtered Marilyn Monroe"><figcaption><b>Low-pass component</b><span>σ = 8.0</span></figcaption></figure>
@@ -861,7 +863,7 @@ enhanced = <span class="tok-func">linear_to_srgb</span>(np.<span class="tok-func
             <figure><img src="web_assets/multires-lotus-lake/lotus-low-before.jpg" alt="Original Lotus low-frequency color atmosphere"><figcaption><b>Lotus low pass</b><span>before matching</span></figcaption></figure>
             <figure><img src="web_assets/multires-lotus-lake/lotus-low-harmonized.jpg" alt="Lotus low frequencies after Lab color harmonization"><figcaption><b>Matched low pass</b><span>toward Lake</span></figcaption></figure>
             <figure><img src="web_assets/multires-lotus-lake/multires-blend.jpg" alt="Basic five-level multiresolution blend"><figcaption><b>Basic blend</b><span>5 levels · sRGB</span></figcaption></figure>
-            <figure><img src="web_assets/multires-lotus-lake/color-aware-blend.jpg" alt="Color-aware six-level multiresolution blend"><figcaption><b>Color-aware</b><span>6 levels · linear RGB</span></figcaption></figure>
+            <figure><img src="web_assets/multires-lotus-lake/color-aware-boundary-blend.jpg" alt="Color-aware six-level multiresolution blend"><figcaption><b>Color-aware</b><span>6 levels · linear RGB</span></figcaption></figure>
           </div>
 
           <h3>Observation</h3>
@@ -869,11 +871,57 @@ enhanced = <span class="tok-func">linear_to_srgb</span>(np.<span class="tok-func
         </section>
       </article>
     </div>
+
+    <section class="gallery-section" id="gallery" data-section>
+      <div class="gallery-heading pj2-gallery-heading">
+        <div><p class="section-index">GALLERY / MULTIRESOLUTION BLENDING</p><h2>Gallery.</h2></div>
+      </div>
+
+      <!-- <div class="gallery-set-heading">
+        <h3>Cake &amp; Pie</h3>
+      </div> -->
+      <div class="gallery-grid pj2-gallery-grid portrait-gallery-grid">
+        <button class="gallery-card contain" type="button" data-title="Cake" data-meta="Original source · aligned crop used for blending" data-full="web_assets/multires-pie-cake/cake.jpg"><img src="web_assets/multires-pie-cake/cake.jpg" alt="Original berry cake photograph" loading="lazy"><span><b>Cake</b><small>Original source</small></span></button>
+        <button class="gallery-card" type="button" data-title="Pie" data-meta="Original target canvas" data-full="web_assets/multires-pie-cake/pie.jpg"><img src="web_assets/multires-pie-cake/pie.jpg" alt="Original fruit pie photograph" loading="lazy"><span><b>Pie</b><small>Original canvas</small></span></button>
+        <button class="gallery-card" type="button" data-title="Mask" data-meta="White = Cake · Black = Pie" data-full="web_assets/multires-pie-cake/mask.jpg"><img src="web_assets/multires-pie-cake/mask.jpg" alt="Half-white half-black mask for the cake and pie blend" loading="lazy"><span><b>Mask</b><small>White Cake · Black Pie</small></span></button>
+        <button class="gallery-card" type="button" data-title="Naive" data-meta="Photoshop hard seam" data-full="web_assets/multires-pie-cake/naive.jpg"><img src="web_assets/multires-pie-cake/naive.jpg" alt="Naive Photoshop combination of cake and pie" loading="lazy"><span><b>Naive</b><small>Hard seam</small></span></button>
+        <button class="gallery-card" type="button" data-title="Final blend" data-meta="Six levels · base σ = 2 · σeff = 36.93" data-full="web_assets/multires-pie-cake/pie-cake-blend.jpg"><img src="web_assets/multires-pie-cake/pie-cake-blend.jpg" alt="Final multiresolution blend of cake and pie" loading="lazy"><span><b>Final blend</b><small>6 levels · σeff 36.93</small></span></button>
+      </div>
+
+      <div class="gallery-set-heading gallery-set-divider">
+        <!-- <h3>Two Screencaps</h3> -->
+      </div>
+      <div class="gallery-grid pj2-gallery-grid landscape-gallery-grid">
+        <button class="gallery-card" type="button" data-title="The Theory of Everything" data-meta="Black-mask source · chalkboard portrait" data-full="web_assets/multires-man/man-left.jpg"><img src="web_assets/multires-man/man-left.jpg" alt="Portrait of a man writing on a chalkboard" loading="lazy"><span><b>The Theory of Everything</b><small>Black-mask source</small></span></button>
+        <button class="gallery-card" type="button" data-title="Fantastic Beasts and Where to Find Them" data-meta="White-mask source · book portrait" data-full="web_assets/multires-man/man-right.jpg"><img src="web_assets/multires-man/man-right.jpg" alt="Portrait of a man holding a book" loading="lazy"><span><b>Fantastic Beasts and Where to Find Them</b><small>White-mask source</small></span></button>
+        <button class="gallery-card" type="button" data-title="Mask" data-meta="Black = Left portrait · White = Right portrait" data-full="web_assets/multires-man/mask.jpg"><img src="web_assets/multires-man/mask.jpg" alt="Diagonal mask for blending two portraits" loading="lazy"><span><b>Mask</b><small>Diagonal selection</small></span></button>
+        <button class="gallery-card" type="button" data-title="Naive" data-meta="Photoshop hard diagonal seam" data-full="web_assets/multires-man/naive.jpg"><img src="web_assets/multires-man/naive.jpg" alt="Naive Photoshop combination of two portraits" loading="lazy"><span><b>Naive</b><small>Hard seam</small></span></button>
+        <button class="gallery-card" type="button" data-title="Final blend" data-meta="Six levels · base σ = 2 · σeff = 36.93" data-full="web_assets/multires-man/man-blend.jpg"><img src="web_assets/multires-man/man-blend.jpg" alt="Final multiresolution blend of two portraits" loading="lazy"><span><b>Final blend</b><small>6 levels · σeff 36.93</small></span></button>
+      </div>
+
+      <div class="image-references">
+        <p class="mini-label">IMAGE REFERENCES</p>
+        <div class="reference-links">
+          <a href="https://www.wikiart.org/en/claude-monet" target="_blank" rel="noopener noreferrer"><b>Lotus</b><span>Claude Monet · WikiArt ↗</span></a>
+          <a href="https://media.gettyimages.com/id/2158417997/photo/reflection-in-lake-of-lofty-clouds.jpg?b=1&amp;c=RZmDURxgoe6LqYFDSiU6Vdvq-OhhzLLt017JdApJlyw%3D&amp;k=20&amp;s=612x612&amp;w=0" target="_blank" rel="noopener noreferrer"><b>Lake</b><span>Getty Images ↗</span></a>
+          <a href="https://www.pexels.com/photo/berries-on-top-of-a-cake-6133305/" target="_blank" rel="noopener noreferrer"><b>Cake</b><span>Pexels ↗</span></a>
+          <a href="https://www.pexels.com/photo/a-pie-with-berries-on-top-in-a-ceramic-bowl-8104735/" target="_blank" rel="noopener noreferrer"><b>Pie</b><span>Pexels ↗</span></a>
+          <a href="https://www.cinemainclasse.it/la-teoria-del-tutto/" target="_blank" rel="noopener noreferrer"><b>Screencap 1</b><span>Cinema in Classe ↗</span></a>
+          <a href="https://in.pinterest.com/pin/759067712204639655/" target="_blank" rel="noopener noreferrer"><b>Screencap 2</b><span>Pinterest ↗</span></a>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer>
     <p>CS 180 · Project 2 · Parts 1 &amp; 2</p>
     <p>Convolution · Edges · Sharpening · Hybrid Images · Multiresolution Blending</p>
   </footer>
+
+  <dialog class="lightbox" id="lightbox">
+    <button class="lightbox-close" type="button" aria-label="Close image">×</button>
+    <img src="" alt="">
+    <div><h2></h2><p></p></div>
+  </dialog>
 </body>
 </html>

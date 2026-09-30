@@ -488,12 +488,49 @@ figcaption span { color: #82949c; text-align: right; }
   font-size: .78rem;
 }
 .color-aware-grid img { aspect-ratio: 690 / 719; object-fit: cover; }
+.pj2-gallery-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.pj2-gallery-heading { grid-template-columns: 1fr; }
+.pj2-gallery-grid .gallery-card,
+.pj2-gallery-grid .gallery-card img { min-height: 0; }
+.portrait-gallery-grid .gallery-card,
+.portrait-gallery-grid .gallery-card img { aspect-ratio: 3 / 4; }
+.landscape-gallery-grid .gallery-card,
+.landscape-gallery-grid .gallery-card img { aspect-ratio: 2422 / 1640; }
+.pj2-gallery-grid .gallery-card.contain img { object-fit: contain; background: #071018; }
+.pj2-gallery-grid .gallery-card small { display: none; }
+.pj2-gallery-grid .gallery-card > span { justify-content: flex-start; }
+.gallery-set-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 28px;
+  max-width: 1420px;
+  margin: 0 auto 18px;
+}
+.gallery-set-heading h3 { margin: 0; font: 600 1.35rem Georgia, serif; }
+.gallery-set-heading p { margin: 0; color: #8fa2aa; font-size: .72rem; }
+.gallery-set-divider { margin-top: 64px; padding-top: 42px; }
+.image-references { max-width: 1420px; margin: 72px auto 0; }
+.gallery-section .image-references > .mini-label { margin: 0 0 17px; color: var(--cyan); }
+.reference-links { display: flex; flex-wrap: wrap; gap: 12px 28px; }
+.reference-links a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  color: #95a8b0;
+  font: 600 .62rem/1.5 "SFMono-Regular", Consolas, monospace;
+  text-decoration: none;
+  transition: color .2s ease;
+}
+.reference-links a:hover { color: white; }
+.reference-links b { color: white; font: 700 .72rem Georgia, serif; }
 
 @media (max-width: 1080px) {
   .project-nav a { min-width: 106px; padding-inline: 16px; }
   .four-up { grid-template-columns: repeat(2, 1fr); }
   .five-up { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .frequency-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pj2-gallery-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 760px) {
@@ -517,6 +554,8 @@ figcaption span { color: #82949c; text-align: right; }
   .blend-stack { width: 100%; }
   .multires-observation { grid-template-columns: 1fr; gap: 30px; }
   .multires-observation .compare-shell { justify-self: center; }
+  .pj2-gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gallery-set-heading { align-items: flex-start; flex-direction: column; gap: 6px; }
 }
 
 @media (max-width: 540px) {
@@ -526,4 +565,5 @@ figcaption span { color: #82949c; text-align: right; }
   .five-up, .evaluation-spectrum-grid, .example-three-grid { grid-template-columns: 1fr; }
   .two-up, .frequency-grid { grid-template-columns: 1fr; }
   .image-grid figcaption { min-height: 0; }
+  .pj2-gallery-grid { grid-template-columns: 1fr; }
 }

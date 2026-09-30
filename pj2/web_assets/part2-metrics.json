@@ -16,5 +16,13 @@
   "multires_levels": 5,
   "multires_mask_white_percent": 34.12791518010118,
   "multires_naive_mae": 0.028496291222987278,
-  "color_aware_levels": 6
+  "color_aware_levels": 6,
+  "color_aware_upper_full_percent": 34.0,
+  "color_aware_upper_fade_end_percent": 60.0,
+  "pie_cake_levels": 6,
+  "pie_cake_mask_white_percent": 50.32594524119948,
+  "pie_cake_naive_mae": 0.013394422525761276,
+  "man_blend_levels": 6,
+  "man_mask_white_percent": 39.81293471629042,
+  "man_naive_mae": 0.004057952758454162
 }

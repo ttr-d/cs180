@@ -1,13 +1,17 @@
 import matplotlib.pyplot as plt
+from pathlib import Path
+
 from align_image_code import align_images
+
+SOURCE_IMAGES = Path(__file__).resolve().parent / "source_images" / "hybrids"
 
 # First load images
 
 # high sf
-im1 = plt.imread('./DerekPicture.jpg') / 255.
+im1 = plt.imread(SOURCE_IMAGES / "DerekPicture.jpg") / 255.
 
 # low sf
-im2 = plt.imread('./nutmeg.jpg') / 255.
+im2 = plt.imread(SOURCE_IMAGES / "nutmeg.jpg") / 255.
 
 # Next align images (this code is provided, but may be improved)
 im1_aligned, im2_aligned = align_images(im1, im2)

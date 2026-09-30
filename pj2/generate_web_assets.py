@@ -25,6 +25,7 @@ from generate_part2_assets import generate_part2_assets
 
 ROOT = Path(__file__).resolve().parent
 ASSETS = ROOT / "web_assets"
+SOURCE_IMAGES = ROOT / "source_images"
 DX = np.array([[1.0, 0.0, -1.0]])
 DY = DX.T
 BOX = np.ones((9, 9), dtype=np.float64) / 81.0
@@ -173,8 +174,9 @@ def main() -> None:
 
     # Part 1.1: run the NumPy-only two-loop implementation on a manageable,
     # high-quality working copy.  The source is optimized once if it exceeds 1 MB.
-    optimize_source_photo(ROOT / "selfie.jpg")
-    selfie = load_grayscale(ROOT / "selfie.jpg", max_width=720)
+    selfie_source = SOURCE_IMAGES / "part1" / "selfie.jpg"
+    optimize_source_photo(selfie_source)
+    selfie = load_grayscale(selfie_source, max_width=720)
     save_grayscale(selfie, convolution_dir / "selfie-grayscale.jpg")
     selfie_box = convolve_two_loops(selfie, BOX)
     selfie_dx = convolve_two_loops(selfie, DX)
@@ -184,7 +186,7 @@ def main() -> None:
     save_grayscale(selfie_dy, convolution_dir / "selfie-dy.jpg", signed=True)
 
     # Part 1.2: finite differences on cameraman.
-    cameraman = load_grayscale(ROOT / "cameraman.png")
+    cameraman = load_grayscale(SOURCE_IMAGES / "part1" / "cameraman.png")
     save_grayscale(cameraman, finite_dir / "cameraman.jpg")
     finite_dx = convolve2d(cameraman, DX, mode="same", boundary="fill", fillvalue=0)
     finite_dy = convolve2d(cameraman, DY, mode="same", boundary="fill", fillvalue=0)
@@ -262,7 +264,7 @@ def main() -> None:
     metrics: dict[str, float | int] = {
         **verify_convolution(),
         **benchmark(),
-        "selfie_source_bytes": (ROOT / "selfie.jpg").stat().st_size,
+        "selfie_source_bytes": selfie_source.stat().st_size,
         "finite_threshold": FINITE_THRESHOLD,
         "smooth_threshold": SMOOTH_THRESHOLD,
         "dog_interior_mae": float(np.mean(np.abs(dog_magnitude[interior] - smooth_magnitude[interior]))),

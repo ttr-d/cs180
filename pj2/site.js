@@ -95,6 +95,46 @@ const tocObserver = new IntersectionObserver((entries) => {
 }, { rootMargin: '-20% 0px -60% 0px', threshold: [0, .1, .4] });
 sections.forEach((section) => tocObserver.observe(section));
 
+const lightbox = document.getElementById('lightbox');
+const lightboxImage = lightbox.querySelector('img');
+const lightboxTitle = lightbox.querySelector('h2');
+const lightboxMeta = lightbox.querySelector('p');
+const galleryCards = [...document.querySelectorAll('.gallery-card')];
+let activeGalleryIndex = -1;
+
+function openGalleryItem(index) {
+  const card = galleryCards[index];
+  if (!card) return;
+  activeGalleryIndex = index;
+  lightboxImage.src = card.dataset.full;
+  lightboxImage.alt = card.querySelector('img').alt;
+  lightboxTitle.textContent = card.dataset.title;
+  lightboxMeta.textContent = card.dataset.meta;
+  if (!lightbox.open) lightbox.showModal();
+}
+
+galleryCards.forEach((card, index) => {
+  card.addEventListener('click', () => openGalleryItem(index));
+});
+
+lightbox.querySelector('.lightbox-close').addEventListener('click', () => lightbox.close());
+lightbox.addEventListener('click', (event) => {
+  if (event.target === lightbox) lightbox.close();
+});
+lightbox.addEventListener('close', () => {
+  lightboxImage.src = '';
+  activeGalleryIndex = -1;
+});
+
+window.addEventListener('keydown', (event) => {
+  if (!lightbox.open || activeGalleryIndex < 0) return;
+  if (event.key === 'ArrowRight') {
+    openGalleryItem((activeGalleryIndex + 1) % galleryCards.length);
+  } else if (event.key === 'ArrowLeft') {
+    openGalleryItem((activeGalleryIndex - 1 + galleryCards.length) % galleryCards.length);
+  }
+});
+
 function scientific(value) {
   if (value === 0) return '0';
   const [coefficient, exponent] = Number(value).toExponential(2).split('e');

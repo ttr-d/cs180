@@ -34,6 +34,7 @@ from stacks import (
 
 ROOT = Path(__file__).resolve().parent
 ASSETS = ROOT / "web_assets"
+SOURCE_IMAGES = ROOT / "source_images"
 
 
 def load_rgb(path: Path) -> np.ndarray:
@@ -59,6 +60,23 @@ def save_gray(array: np.ndarray, path: Path, quality: int = 90) -> None:
     image = Image.fromarray(np.round(values * 255.0).astype(np.uint8))
     path.parent.mkdir(parents=True, exist_ok=True)
     image.save(path, quality=quality, optimize=True, progressive=True)
+
+
+def resize_rgb(image: np.ndarray, width: int, height: int) -> np.ndarray:
+    """Resize an RGB float image, using area resampling when reducing it."""
+    interpolation = (
+        cv2.INTER_AREA
+        if height <= image.shape[0] and width <= image.shape[1]
+        else cv2.INTER_CUBIC
+    )
+    return cv2.resize(image, (width, height), interpolation=interpolation)
+
+
+def resize_long_edge(image: np.ndarray, long_edge: int) -> np.ndarray:
+    """Resize an RGB image while retaining its original aspect ratio."""
+    height, width = image.shape[:2]
+    scale = long_edge / max(height, width)
+    return resize_rgb(image, round(width * scale), round(height * scale))
 
 
 def save_high_frequency(array: np.ndarray, path: Path) -> None:
@@ -94,7 +112,7 @@ def generate_sharpening() -> dict[str, float]:
     output = ASSETS / "sharpening"
     output.mkdir(parents=True, exist_ok=True)
 
-    taj = load_rgb(ROOT / "taj.jpg")
+    taj = load_rgb(SOURCE_IMAGES / "sharpening" / "taj.jpg")
     taj_blur, taj_high, taj_sharp, taj_filter = unsharp_mask(
         taj, kernel_size=13, sigma=2.0, amount=1.5
     )
@@ -114,7 +132,7 @@ def generate_sharpening() -> dict[str, float]:
     # Evaluation starts from a naturally sharp image, removes frequencies, then
     # attempts to restore contrast around the surviving transitions.
     evaluation_original = align_from_eyes(
-        load_rgb(ROOT / "raccoon.jpg"),
+        load_rgb(SOURCE_IMAGES / "hybrids" / "raccoon.jpg"),
         left_eye=(322, 281),
         right_eye=(433, 281),
         output_size=512,
@@ -178,7 +196,7 @@ def generate_hybrids() -> dict[str, float]:
     # Keep Derek upright and preserve his original 732:1024 portrait ratio.
     output_height = 512
     output_width = round(output_height * 732 / 1024)
-    derek_source = load_rgb(ROOT / "DerekPicture.jpg")
+    derek_source = load_rgb(SOURCE_IMAGES / "hybrids" / "DerekPicture.jpg")
     derek = cv2.resize(
         derek_source, (output_width, output_height), interpolation=cv2.INTER_AREA
     )
@@ -187,7 +205,7 @@ def generate_hybrids() -> dict[str, float]:
     derek_left_eye = (299 * horizontal_scale, 343 * vertical_scale)
     derek_right_eye = (439 * horizontal_scale, 330 * vertical_scale)
     nutmeg = align_to_eye_targets(
-        load_rgb(ROOT / "nutmeg.jpg"),
+        load_rgb(SOURCE_IMAGES / "hybrids" / "nutmeg.jpg"),
         left_eye=(607, 285),
         right_eye=(751, 363),
         target_left_eye=derek_left_eye,
@@ -210,7 +228,7 @@ def generate_hybrids() -> dict[str, float]:
     save_rgb(derek_hybrid, derek_dir / "hybrid.jpg", quality=94)
 
     einstein = align_from_eyes(
-        load_rgb(ROOT / "iestein.png"),
+        load_rgb(SOURCE_IMAGES / "hybrids" / "iestein.png"),
         left_eye=(86, 110),
         right_eye=(141, 109),
         output_size=512,
@@ -218,7 +236,7 @@ def generate_hybrids() -> dict[str, float]:
         eye_distance=0.25,
     )
     marilyn = align_from_eyes(
-        load_rgb(ROOT / "marilyn.png"),
+        load_rgb(SOURCE_IMAGES / "hybrids" / "marilyn.png"),
         left_eye=(82, 109),
         right_eye=(145, 110),
         output_size=512,
@@ -248,7 +266,7 @@ def generate_hybrids() -> dict[str, float]:
     )
 
     raccoon = align_from_eyes(
-        load_rgb(ROOT / "raccoon.jpg"),
+        load_rgb(SOURCE_IMAGES / "hybrids" / "raccoon.jpg"),
         left_eye=(322, 281),
         right_eye=(433, 281),
         output_size=512,
@@ -256,7 +274,7 @@ def generate_hybrids() -> dict[str, float]:
         eye_distance=0.25,
     )
     wolf = align_from_eyes(
-        load_rgb(ROOT / "wolf.jpg"),
+        load_rgb(SOURCE_IMAGES / "hybrids" / "wolf.jpg"),
         left_eye=(191, 179),
         right_eye=(276, 179),
         output_size=512,
@@ -308,8 +326,8 @@ def generate_stacks() -> dict[str, float | int]:
     output = ASSETS / "stacks-oraple"
     output.mkdir(parents=True, exist_ok=True)
 
-    apple = load_rgb(ROOT / "apple.jpeg")
-    orange = load_rgb(ROOT / "orange.jpeg")
+    apple = load_rgb(SOURCE_IMAGES / "stacks" / "apple.jpeg")
+    orange = load_rgb(SOURCE_IMAGES / "stacks" / "orange.jpeg")
     if apple.shape != orange.shape:
         raise ValueError("apple and orange must have the same dimensions")
 
@@ -395,10 +413,11 @@ def generate_multiresolution_blend() -> dict[str, float | int]:
     output = ASSETS / "multires-lotus-lake"
     output.mkdir(parents=True, exist_ok=True)
 
-    lotus = load_rgb(ROOT / "lotus.jpg")
-    lake = load_rgb(ROOT / "lake.jpg")
-    naive = load_rgb(ROOT / "naive.jpg")
-    mask = load_binary_mask(ROOT / "mask.jpg")
+    source = SOURCE_IMAGES / "blending" / "lotus-lake"
+    lotus = load_rgb(source / "lotus.jpg")
+    lake = load_rgb(source / "lake.jpg")
+    naive = load_rgb(source / "naive.jpg")
+    mask = load_binary_mask(source / "mask.jpg")
     if lotus.shape != lake.shape or lotus.shape != naive.shape:
         raise ValueError("lotus, lake, and naive images must have equal dimensions")
     if mask.shape != lotus.shape[:2]:
@@ -460,6 +479,20 @@ def generate_multiresolution_blend() -> dict[str, float | int]:
     enhanced_linear = np.clip(np.sum(enhanced_blended_l, axis=0), 0.0, 1.0)
     enhanced_blend = linear_to_srgb(enhanced_linear)
 
+    # Restore the harmonized Lotus atmosphere in the upper image, then fade
+    # smoothly into the mask-based color-aware blend through the middle.
+    height = lotus.shape[0]
+    vertical_position = np.linspace(0.0, 1.0, height)[:, None, None]
+    transition = np.clip((vertical_position - 0.34) / (0.60 - 0.34), 0.0, 1.0)
+    upper_weight = 0.5 * (1.0 + np.cos(np.pi * transition))
+    final_color_aware_linear = (
+        upper_weight * srgb_to_linear(harmonized_lotus)
+        + (1.0 - upper_weight) * enhanced_linear
+    )
+    final_color_aware = linear_to_srgb(
+        np.clip(final_color_aware_linear, 0.0, 1.0)
+    )
+
     save_rgb(lotus, output / "lotus.jpg", quality=92)
     save_rgb(lake, output / "lake.jpg", quality=92)
     save_gray(mask, output / "mask.jpg", quality=94)
@@ -497,12 +530,107 @@ def generate_multiresolution_blend() -> dict[str, float | int]:
     save_rgb(lotus_low, output / "lotus-low-before.jpg", quality=92)
     save_rgb(harmonized_low, output / "lotus-low-harmonized.jpg", quality=92)
     save_rgb(harmonized_lotus, output / "lotus-harmonized.jpg", quality=92)
-    save_rgb(enhanced_blend, output / "color-aware-blend.jpg", quality=94)
+    save_rgb(enhanced_blend, output / "color-aware-boundary-blend.jpg", quality=94)
+    save_rgb(final_color_aware, output / "color-aware-blend.jpg", quality=94)
     return {
         "multires_levels": levels,
         "multires_mask_white_percent": float(100.0 * np.mean(mask)),
         "multires_naive_mae": float(np.mean(np.abs(naive - blended))),
         "color_aware_levels": enhanced_levels,
+        "color_aware_upper_full_percent": 34.0,
+        "color_aware_upper_fade_end_percent": 60.0,
+    }
+
+
+def generate_pie_cake_blend() -> dict[str, float | int]:
+    """Blend an aligned cake and pie across a multiresolution seam."""
+    output = ASSETS / "multires-pie-cake"
+    output.mkdir(parents=True, exist_ok=True)
+
+    # cake-cut.jpg is the manually aligned version of the cake. Resize every
+    # aligned input to one common portrait canvas before building the stacks.
+    source = SOURCE_IMAGES / "blending" / "pie-cake"
+    pie_source = load_rgb(source / "pexels-pie.jpg")
+    height = 1008
+    width = round(height * pie_source.shape[1] / pie_source.shape[0])
+    pie = resize_rgb(pie_source, width, height)
+    cake_aligned = resize_rgb(load_rgb(source / "cake-cut.jpg"), width, height)
+    naive = resize_rgb(load_rgb(source / "naive-pie.jpg"), width, height)
+    mask_source = load_binary_mask(source / "mask-pie.jpg")
+    mask = cv2.resize(mask_source, (width, height), interpolation=cv2.INTER_NEAREST)
+
+    levels = 6
+    base_sigma = 2.0
+    cake_g = gaussian_stack(
+        srgb_to_linear(cake_aligned), levels=levels, base_sigma=base_sigma
+    )
+    pie_g = gaussian_stack(
+        srgb_to_linear(pie), levels=levels, base_sigma=base_sigma
+    )
+    mask_g = gaussian_stack(mask, levels=levels, base_sigma=base_sigma)
+    _, _, blended_l = blend_laplacian_stacks(
+        laplacian_stack(cake_g), laplacian_stack(pie_g), mask_g
+    )
+    blended = linear_to_srgb(
+        np.clip(np.sum(blended_l, axis=0), 0.0, 1.0)
+    )
+
+    cake_original = resize_long_edge(load_rgb(source / "pexels-cake.jpg"), long_edge=1008)
+    save_rgb(cake_original, output / "cake.jpg", quality=92)
+    save_rgb(pie, output / "pie.jpg", quality=92)
+    save_rgb(cake_aligned, output / "cake-aligned.jpg", quality=92)
+    save_gray(mask, output / "mask.jpg", quality=94)
+    save_rgb(naive, output / "naive.jpg", quality=92)
+    save_rgb(blended, output / "pie-cake-blend.jpg", quality=94)
+
+    return {
+        "pie_cake_levels": levels,
+        "pie_cake_mask_white_percent": float(100.0 * np.mean(mask)),
+        "pie_cake_naive_mae": float(np.mean(np.abs(naive - blended))),
+    }
+
+
+def generate_man_blend() -> dict[str, float | int]:
+    """Blend two aligned portraits across a diagonal multiresolution seam."""
+    output = ASSETS / "multires-man"
+    output.mkdir(parents=True, exist_ok=True)
+
+    source = SOURCE_IMAGES / "blending" / "man"
+    left_source = load_rgb(source / "man-left.jpg")
+    width = 1100
+    height = round(width * left_source.shape[0] / left_source.shape[1])
+    left = resize_rgb(left_source, width, height)
+    right = resize_rgb(load_rgb(source / "man-right.jpg"), width, height)
+    naive = resize_rgb(load_rgb(source / "naive-man.jpg"), width, height)
+    mask_source = load_binary_mask(source / "mask-man.jpg")
+    mask = cv2.resize(mask_source, (width, height), interpolation=cv2.INTER_NEAREST)
+
+    levels = 6
+    base_sigma = 2.0
+    right_g = gaussian_stack(
+        srgb_to_linear(right), levels=levels, base_sigma=base_sigma
+    )
+    left_g = gaussian_stack(
+        srgb_to_linear(left), levels=levels, base_sigma=base_sigma
+    )
+    mask_g = gaussian_stack(mask, levels=levels, base_sigma=base_sigma)
+    _, _, blended_l = blend_laplacian_stacks(
+        laplacian_stack(right_g), laplacian_stack(left_g), mask_g
+    )
+    blended = linear_to_srgb(
+        np.clip(np.sum(blended_l, axis=0), 0.0, 1.0)
+    )
+
+    save_rgb(left, output / "man-left.jpg", quality=92)
+    save_rgb(right, output / "man-right.jpg", quality=92)
+    save_gray(mask, output / "mask.jpg", quality=94)
+    save_rgb(naive, output / "naive.jpg", quality=92)
+    save_rgb(blended, output / "man-blend.jpg", quality=94)
+
+    return {
+        "man_blend_levels": levels,
+        "man_mask_white_percent": float(100.0 * np.mean(mask)),
+        "man_naive_mae": float(np.mean(np.abs(naive - blended))),
     }
 
 
@@ -511,6 +639,8 @@ def generate_part2_assets() -> dict[str, float | int]:
     metrics.update(generate_hybrids())
     metrics.update(generate_stacks())
     metrics.update(generate_multiresolution_blend())
+    metrics.update(generate_pie_cake_blend())
+    metrics.update(generate_man_blend())
     metrics_path = ASSETS / "part2-metrics.json"
     with metrics_path.open("w", encoding="utf-8") as output:
         json.dump(metrics, output, indent=2)
